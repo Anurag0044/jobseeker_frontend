@@ -117,25 +117,13 @@ export default function ForgeXLogo({ className }: { className?: string }) {
             orge
           </motion.span>
         </span>
-        <motion.span 
-          className="text-[#e2d5c5] font-semibold relative"
-          animate={{
-            textShadow: [
-              "0 0 10px rgba(226,213,197,0.4)",
-              "0 0 20px rgba(226,213,197,0.9)",
-              "0 0 10px rgba(226,213,197,0.4)"
-            ]
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+        <span 
+          className="text-[#e2d5c5] font-semibold relative transition-all duration-500 group-hover:[text-shadow:0_0_20px_rgba(226,213,197,0.9),_0_0_10px_rgba(226,213,197,0.4)]"
         >
           X
           {/* Intense hover glow for X */}
           <div className="absolute inset-0 bg-[#e2d5c5] blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-        </motion.span>
+        </span>
       </div>
     </Link>
   );

@@ -70,7 +70,6 @@ export default function PremiumHeroButtons() {
       {/* Primary — Start Forging */}
       <GlassPillButton
         href="/workspace"
-        dim
         spinColor="rgba(255,255,255,0.7)"
         spinDuration="3s"
       >
@@ -95,7 +94,6 @@ export default function PremiumHeroButtons() {
       {/* Secondary — View Demo */}
       <GlassPillButton
         href="#"
-        dim
         spinColor="rgba(255,255,255,0.7)"
         spinDuration="4s"
       >
