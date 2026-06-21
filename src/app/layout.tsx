@@ -21,11 +21,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geist.variable} dark antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
-      <body className="min-h-full flex flex-col font-body-lg text-on-background bg-background bg-grid-pattern level-0">
+      <body
+        className="min-h-full flex flex-col font-body-lg text-on-background bg-background bg-grid-pattern level-0"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>
