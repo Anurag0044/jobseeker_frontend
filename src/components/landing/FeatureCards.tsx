@@ -3,8 +3,15 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, FileEdit, Mail, Box } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const features = [
+type Feature = {
+  title: string;
+  desc: string;
+  icon: LucideIcon;
+};
+
+const features: Feature[] = [
   {
     title: "Job Analysis",
     desc: "Deconstructs requirements from any URL or description.",
@@ -27,10 +34,9 @@ const features = [
   },
 ];
 
-function FeatureCard({ feature, index }: { feature: any; index: number }) {
+function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (ref.current) {
@@ -47,8 +53,6 @@ function FeatureCard({ feature, index }: { feature: any; index: number }) {
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       whileHover={{ scale: 1.02, rotateX: 2, rotateY: -2 }}
       className="relative glass-panel p-lg rounded-xl flex flex-col group overflow-hidden"
       style={{ perspective: 1000 }}

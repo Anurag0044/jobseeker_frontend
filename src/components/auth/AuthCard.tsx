@@ -1,19 +1,66 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FirebaseError } from "firebase/app";
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  sendPasswordResetEmail,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import ForgeXLogo from "../ui/ForgeXLogo";
+import {
+  githubProvider,
+  googleProvider,
+  requireFirebaseAuth,
+} from "../../lib/firebase";
+
+type AuthAction = "password" | "github" | "google" | "reset" | null;
+
+function getAuthErrorMessage(error: unknown) {
+  if (!(error instanceof FirebaseError)) {
+    return "Unable to sign in. Please try again.";
+  }
+
+  switch (error.code) {
+    case "auth/invalid-credential":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Email or password is incorrect.";
+    case "auth/account-exists-with-different-credential":
+      return "An account already exists with this email using another sign-in method.";
+    case "auth/popup-closed-by-user":
+      return "Sign-in was cancelled before it completed.";
+    case "auth/popup-blocked":
+      return "The sign-in popup was blocked by the browser.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection and try again.";
+    default:
+      return error.message || "Unable to sign in. Please try again.";
+  }
+}
 
 export default function AuthCard() {
+  const router = useRouter();
   const [showGlow, setShowGlow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [authAction, setAuthAction] = useState<AuthAction>(null);
   const [emailFocus, setEmailFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [authMessage, setAuthMessage] = useState("");
+  const [authMessageType, setAuthMessageType] = useState<"error" | "success">("error");
   const [hoveredSocialIndex, setHoveredSocialIndex] = useState<number | null>(null);
+  const isLoading = authAction !== null;
 
   useEffect(() => {
     // The purple arc takes ~5.8s to hit the card. Trigger the edge glow exactly then!
@@ -21,13 +68,76 @@ export default function AuthCard() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const prepareAuth = async () => {
+    const firebaseAuth = requireFirebaseAuth();
+    await setPersistence(
+      firebaseAuth,
+      rememberMe ? browserLocalPersistence : browserSessionPersistence
+    );
+
+    return firebaseAuth;
+  };
+
+  const completeSignIn = () => {
+    router.replace("/workspace");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate loading
-    setTimeout(() => {
-      window.location.href = "/workspace";
-    }, 1500);
+    setAuthAction("password");
+    setAuthMessage("");
+
+    try {
+      const firebaseAuth = await prepareAuth();
+      await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      completeSignIn();
+    } catch (error) {
+      setAuthMessageType("error");
+      setAuthMessage(getAuthErrorMessage(error));
+    } finally {
+      setAuthAction(null);
+    }
+  };
+
+  const handleSocialSignIn = async (providerName: "github" | "google") => {
+    setAuthAction(providerName);
+    setAuthMessage("");
+
+    try {
+      const firebaseAuth = await prepareAuth();
+      await signInWithPopup(
+        firebaseAuth,
+        providerName === "github" ? githubProvider : googleProvider
+      );
+      completeSignIn();
+    } catch (error) {
+      setAuthMessageType("error");
+      setAuthMessage(getAuthErrorMessage(error));
+    } finally {
+      setAuthAction(null);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email.trim()) {
+      setAuthMessageType("error");
+      setAuthMessage("Enter your email address first.");
+      return;
+    }
+
+    setAuthAction("reset");
+    setAuthMessage("");
+
+    try {
+      await sendPasswordResetEmail(requireFirebaseAuth(), email.trim());
+      setAuthMessageType("success");
+      setAuthMessage("Password reset email sent.");
+    } catch (error) {
+      setAuthMessageType("error");
+      setAuthMessage(getAuthErrorMessage(error));
+    } finally {
+      setAuthAction(null);
+    }
   };
 
   const staggerVariants: import("framer-motion").Variants = {
@@ -100,8 +210,10 @@ export default function AuthCard() {
         >
           <button
             type="button"
+            aria-label="Sign in with GitHub"
+            disabled={isLoading}
             className="flex-1 relative flex items-center justify-center h-10 rounded-full transition-colors duration-300 z-10"
-            onClick={() => { window.location.href = "/workspace"; }}
+            onClick={() => handleSocialSignIn("github")}
             onMouseEnter={() => setHoveredSocialIndex(0)}
           >
             <AnimatePresence>
@@ -116,15 +228,21 @@ export default function AuthCard() {
                 />
               )}
             </AnimatePresence>
-            <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current transition-colors duration-300 relative z-20 ${hoveredSocialIndex === 0 ? "text-white" : "text-[#999999]"}`}>
-              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-            </svg>
+            {authAction === "github" ? (
+              <Loader2 className="w-5 h-5 animate-spin text-white/80 relative z-20" />
+            ) : (
+              <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current transition-colors duration-300 relative z-20 ${hoveredSocialIndex === 0 ? "text-white" : "text-[#999999]"}`}>
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+              </svg>
+            )}
           </button>
 
           <button
             type="button"
+            aria-label="Sign in with Google"
+            disabled={isLoading}
             className="flex-1 relative flex items-center justify-center h-10 rounded-full transition-colors duration-300 z-10"
-            onClick={() => { window.location.href = "/workspace"; }}
+            onClick={() => handleSocialSignIn("google")}
             onMouseEnter={() => setHoveredSocialIndex(1)}
           >
             <AnimatePresence>
@@ -139,12 +257,16 @@ export default function AuthCard() {
                 />
               )}
             </AnimatePresence>
-            <svg viewBox="0 0 24 24" className={`w-5 h-5 transition-colors duration-300 relative z-20 ${hoveredSocialIndex === 1 ? "fill-white" : "fill-[#999999]"}`}>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
+            {authAction === "google" ? (
+              <Loader2 className="w-5 h-5 animate-spin text-white/80 relative z-20" />
+            ) : (
+              <svg viewBox="0 0 24 24" className={`w-5 h-5 transition-colors duration-300 relative z-20 ${hoveredSocialIndex === 1 ? "fill-white" : "fill-[#999999]"}`}>
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+            )}
           </button>
         </motion.div>
 
@@ -154,6 +276,18 @@ export default function AuthCard() {
           <span className="text-xs text-[#555] uppercase tracking-wider font-medium">Or</span>
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
         </motion.div>
+
+        {authMessage && (
+          <motion.p
+            custom={4}
+            initial="hidden"
+            animate="visible"
+            variants={staggerVariants}
+            className={`mb-6 text-center text-sm ${authMessageType === "success" ? "text-emerald-300" : "text-red-300"}`}
+          >
+            {authMessage}
+          </motion.p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email Input */}
@@ -241,13 +375,25 @@ export default function AuthCard() {
           <motion.div custom={6} initial="hidden" animate="visible" variants={staggerVariants} className="flex justify-between items-center mt-2">
             <label className="flex items-center space-x-2 cursor-pointer group">
               <div className="relative w-4 h-4 rounded-[4px] border border-white/20 bg-white/5 group-hover:border-violet-400/50 transition-colors flex items-center justify-center overflow-hidden">
-                <input type="checkbox" className="peer sr-only" />
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
                 <div className="absolute inset-0 bg-violet-500 scale-0 peer-checked:scale-100 transition-transform duration-200 ease-out"></div>
                 <svg viewBox="0 0 24 24" className="w-3 h-3 text-white absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity duration-200 delay-100" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               <span className="text-sm text-[#888] group-hover:text-[#aaa] transition-colors">Remember me</span>
             </label>
-            <a href="#" className="text-sm text-violet-400 hover:text-violet-300 transition-colors">Forgot password?</a>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={handlePasswordReset}
+              className="text-sm text-violet-400 hover:text-violet-300 transition-colors disabled:opacity-60"
+            >
+              {authAction === "reset" ? "Sending..." : "Forgot password?"}
+            </button>
           </motion.div>
 
           {/* Main CTA */}
@@ -268,7 +414,7 @@ export default function AuthCard() {
                 <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-500 -z-10"></div>
 
                 <span className="relative z-20 flex items-center justify-center text-white/90 group-hover:text-white font-medium transition-all duration-300 drop-shadow-md">
-                  {isLoading ? (
+                  {authAction === "password" ? (
                     <Loader2 className="w-5 h-5 animate-spin text-white/80" />
                   ) : (
                     "Sign In"
@@ -280,7 +426,7 @@ export default function AuthCard() {
         </form>
 
         <motion.div custom={8} initial="hidden" animate="visible" variants={staggerVariants} className="mt-8 text-center">
-          <span className="text-[#666] text-sm">Don't have an account? </span>
+          <span className="text-[#666] text-sm">Don&apos;t have an account? </span>
           <a href="#" className="text-white text-sm font-medium hover:text-violet-400 transition-colors">Request Access</a>
         </motion.div>
 

@@ -1,9 +1,12 @@
 import React from "react";
 import Link from "next/link";
+import AuthGuard from "../../components/auth/AuthGuard";
+import LogoutButton from "../../components/auth/LogoutButton";
 
 export default function WorkspacePage() {
   return (
-    <div className="h-screen w-full flex overflow-hidden font-body-lg text-body-lg antialiased">
+    <AuthGuard>
+      <div className="h-screen w-full flex overflow-hidden font-body-lg text-body-lg antialiased">
       <style dangerouslySetInnerHTML={{__html: `
         .substrate-panel {
             background-color: #121212;
@@ -107,10 +110,7 @@ export default function WorkspacePage() {
             <span className="material-symbols-outlined text-[18px] opacity-70 group-hover:opacity-100 transition-opacity">help</span>
             <span>Help</span>
           </Link>
-          <Link href="/sign-in" className="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 font-mono-label text-mono-label uppercase tracking-widest group">
-            <span className="material-symbols-outlined text-[18px] opacity-70 group-hover:opacity-100 transition-opacity">logout</span>
-            <span>Logout</span>
-          </Link>
+          <LogoutButton />
         </div>
       </nav>
 
@@ -298,6 +298,7 @@ export default function WorkspacePage() {
           </section>
         </div>
       </aside>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
