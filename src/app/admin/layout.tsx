@@ -80,14 +80,13 @@ function AdminSidebar() {
               {sec.items.map((item, j) => {
                 const active = isCurrent(item.href);
                 return (
-                  <Link 
-                    key={j} 
+                  <Link
+                    key={j}
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      active 
-                        ? "bg-[#1e1a2e]/60 text-[#b19cd9]" 
-                        : "text-[#a1a1aa] hover:text-[#e5e2e1] hover:bg-[#121212]"
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${active
+                      ? "bg-[#1e1a2e]/60 text-[#b19cd9]"
+                      : "text-[#a1a1aa] hover:text-[#e5e2e1] hover:bg-[#121212]"
+                      }`}
                   >
                     <item.icon size={16} className={active ? "text-[#b19cd9]" : "text-[#71717a]"} />
                     {item.label}
@@ -127,26 +126,26 @@ function AdminSidebar() {
 
 function AdminTopBar() {
   return (
-    <header className="h-[72px] shrink-0 border-b border-[#1e1e1e] bg-[#0A0A0A] flex items-center justify-between px-8 z-10 sticky top-0">
-      
+    <header className="h-[72px] shrink-0 bg-[#0A0A0A]/70 backdrop-blur-xl flex items-center justify-between px-8 z-10 sticky top-0 border-b border-white/5 relative">
+      <div className="flex-1"></div>
+
       {/* Search */}
-      <div className="w-[400px]">
-        <div className="relative group">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a] group-focus-within:text-[#b19cd9] transition-colors" />
-          <input 
-            type="text" 
-            placeholder="Search users, companies, communities..." 
-            className="w-full bg-[#121212] border border-[#262626] rounded-xl pl-9 pr-12 py-2 text-[13px] text-white placeholder:text-[#71717a] outline-none focus:border-[#3f3f46] focus:bg-[#1A1A1A] transition-all"
+      <div
+        className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px]"
+        style={{ left: 'calc(50% - 140px)' }}
+      >
+        <div className="relative group real-glass-search">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a] group-focus-within:text-[#b19cd9] group-active:scale-75 group-focus-within:rotate-12 transition-all duration-300" />
+          <input
+            type="text"
+            placeholder="Search users, companies, communities..."
+            className="w-full bg-transparent pl-10 pr-4 py-2 text-[13px] text-white placeholder:text-[#71717a] outline-none"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <span className="text-[10px] text-[#71717a] font-mono border border-[#262626] bg-[#0A0A0A] rounded px-1.5 py-0.5">⌘</span>
-            <span className="text-[10px] text-[#71717a] font-mono border border-[#262626] bg-[#0A0A0A] rounded px-1.5 py-0.5">K</span>
-          </div>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-5">
+      <div className="flex-1 flex items-center justify-end gap-5">
         <button className="text-[#a1a1aa] hover:text-white transition-colors"><Sun size={18} /></button>
         <button className="text-[#a1a1aa] hover:text-white transition-colors relative">
           <Bell size={18} />
@@ -156,7 +155,7 @@ function AdminTopBar() {
           <MessageSquare size={18} />
           <span className="absolute -top-2 -right-2 w-[14px] h-[14px] rounded-full bg-[#b19cd9] text-black text-[9px] font-bold flex items-center justify-center border-2 border-[#0A0A0A]">2</span>
         </button>
-        
+
         <div className="w-px h-6 bg-[#262626] mx-1"></div>
 
         <button className="flex items-center gap-3 group cursor-pointer hover:bg-[#121212] p-1.5 rounded-lg transition-colors border border-transparent hover:border-[#262626]">

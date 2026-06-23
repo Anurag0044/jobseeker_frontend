@@ -72,6 +72,7 @@
   --font-body-lg: var(--font-geist);
   --font-headline-lg-mobile: var(--font-geist);
   --font-body-sm: var(--font-geist);
+  --font-inter: var(--font-inter);
 }
 
 @utility text-title-md {
@@ -341,4 +342,86 @@ body,
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #52525b;
+}
+
+/* Hyper-Realistic Glass Effect with Animated Hover Edge */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+@keyframes bg-spin {
+  to {
+    --border-angle: 1turn;
+  }
+}
+
+.real-glass-search {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 4px 24px -4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.real-glass-search::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--border-angle), transparent 60%, rgba(177, 156, 217, 0.8) 80%, rgba(255, 255, 255, 1) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: bg-spin 4s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  /* Hidden by default */
+  transition: opacity 0.3s ease;
+}
+
+.real-glass-search:hover::before,
+.real-glass-search:focus-within::before {
+  opacity: 1;
+  /* Brightens on hover/focus */
+}
+
+.real-glass-search:hover {
+  box-shadow:
+    inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 8px 32px -4px rgba(0, 0, 0, 0.4);
+}
+
+.real-glass-search:focus-within {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 8px 32px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(177, 156, 217, 0.4);
+}
+
+/* Infinite Scrolling Marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@utility animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+@utility animate-marquee-reverse {
+  animation: marquee 40s linear infinite reverse;
 }

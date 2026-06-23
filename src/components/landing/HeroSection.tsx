@@ -32,7 +32,7 @@ export default function HeroSection() {
       {/* Content */}
       <motion.div
         style={{ scale, opacity }}
-        className="relative z-10 max-w-[1440px] mx-auto px-md md:px-xl min-h-[90vh] flex flex-col justify-center items-start"
+        className="relative z-10 w-full px-6 md:px-12 min-h-[90vh] flex flex-col justify-center items-start"
       >
         {/* ✅ AnimatedHeadline replaces static h1 */}
         <AnimatedHeadline />

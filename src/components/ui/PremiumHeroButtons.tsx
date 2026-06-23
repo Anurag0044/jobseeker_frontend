@@ -19,8 +19,8 @@ function GlassPillButton({
   spinColor?: string;
 }) {
   return (
-    <div className="relative flex items-center bg-white/[0.02] backdrop-blur-md rounded-full p-[6px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] group">
-      
+    <div className="relative flex items-center bg-black/30 backdrop-blur-md rounded-full p-[6px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.05),0_8px_16px_rgba(0,0,0,0.4)] group overflow-hidden">
+
       {/* 1. Static border to perfectly match the Nav items (border-white/[0.04]) */}
       <div className="absolute inset-0 rounded-full border border-white/[0.04] pointer-events-none" />
 
@@ -36,7 +36,7 @@ function GlassPillButton({
         }}
       >
         {/* The rotating gradient - using standard Tailwind animate-spin */}
-        <div 
+        <div
           className="absolute top-1/2 left-1/2 w-[200%] aspect-square -translate-x-1/2 -translate-y-1/2"
         >
           <div
@@ -52,9 +52,8 @@ function GlassPillButton({
       {/* 3. Button Content */}
       <Link
         href={href}
-        className={`relative flex items-center justify-center gap-1.5 px-5 py-2 text-[14px] font-medium transition-colors duration-300 rounded-full z-10 ${
-          dim ? "text-[#999999] hover:text-white" : "text-white/90 hover:text-white"
-        }`}
+        className={`relative flex items-center justify-center gap-1.5 px-5 py-2 text-[14px] font-medium transition-colors duration-300 rounded-full z-10 ${dim ? "text-[#999999] hover:text-white" : "text-white/90 hover:text-white"
+          }`}
       >
         {/* Hover glass highlight - identical to Nav */}
         <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 realistic-glass-pill -z-10" />

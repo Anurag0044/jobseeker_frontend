@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Inter } from "next/font/google";
 import "./globals.css";
 
 const geist = Geist({
   variable: "--font-geist",
+  subsets: ["latin"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -20,7 +25,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} dark antialiased`}
+      className={`${geist.variable} ${inter.variable} dark antialiased`}
       suppressHydrationWarning
     >
       <head>

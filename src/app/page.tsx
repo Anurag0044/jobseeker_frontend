@@ -13,9 +13,6 @@ export default function LandingPage() {
   return (
     <SmoothScroller>
       <div className="relative min-h-screen bg-background text-on-background overflow-hidden font-body-lg">
-        {/* Global Noise Overlay */}
-        <div className="fixed inset-0 pointer-events-none z-[9] bg-noise" />
-
         {/* Global Navigation */}
         <nav className="fixed top-0 w-full z-50 bg-[#050505]/60 backdrop-blur-xl border-b border-white/[0.06] transition-all duration-300">
           <div className="w-full px-6 md:px-12 h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-md">

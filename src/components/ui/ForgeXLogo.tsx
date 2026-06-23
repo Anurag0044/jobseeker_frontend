@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export default function ForgeXLogo({ className }: { className?: string }) {
   const { scrollY } = useScroll();
-  
+
   // Use exact width for "orge" (roughly 52px at 24px font size) to prevent layout jumping
   // Animating width directly instead of maxWidth gives a perfectly linear 60fps scroll translation
   // We use a longer scroll range [0, 250] so it feels slow, deliberate, and smooth as butter
@@ -20,15 +20,15 @@ export default function ForgeXLogo({ className }: { className?: string }) {
     >
       {/* Container for the F Icon */}
       <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
-        
+
         {/* Subtle glow behind the icon on hover */}
         <div className="absolute inset-0 bg-[#b19cd9]/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
         {/* The Exact Geometric 'F' SVG */}
-        <svg 
-          viewBox="0 0 100 100" 
+        <svg
+          viewBox="0 0 100 100"
           className="relative z-10 w-full h-full drop-shadow-lg transition-transform duration-500 group-hover:scale-105"
-          fill="none" 
+          fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -117,7 +117,7 @@ export default function ForgeXLogo({ className }: { className?: string }) {
             orge
           </motion.span>
         </span>
-        <span 
+        <span
           className="text-[#e2d5c5] font-semibold relative transition-all duration-500 group-hover:[text-shadow:0_0_20px_rgba(226,213,197,0.9),_0_0_10px_rgba(226,213,197,0.4)]"
         >
           X
