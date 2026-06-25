@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import {
   Search, Send, Paperclip, Calendar, Link as LinkIcon,
   MoreHorizontal, FileText, Users, FolderGit2,
-  Star, ChevronRight, Sparkles, Pin, Edit
+  Star, ChevronRight, Sparkles, Pin, Edit, UserPlus
 } from "lucide-react";
 import { useRealtimeChat, type ChatMessage } from "../../../hooks/useRealtimeChat";
+import { useConnections } from "../../../hooks/useConnections";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -53,27 +55,36 @@ export default function MessagesPage() {
     loading,
     error,
   } = useRealtimeChat();
+  const { connectedUsers, loading: connectionsLoading } = useConnections();
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
 
+  // Only show conversations with connected users
+  const connectedUidSet = useMemo(
+    () => new Set(connectedUsers.map((u) => u.uid)),
+    [connectedUsers]
+  );
+
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conversation) => {
-      const searchable = [
-        conversation.profile.displayName,
-        conversation.profile.username,
-        conversation.profile.title,
-        conversation.profile.email,
-        conversation.chat?.lastMessageText || "",
-      ].join(" ").toLowerCase();
+    return conversations
+      .filter((conversation) => connectedUidSet.has(conversation.profile.uid))
+      .filter((conversation) => {
+        const searchable = [
+          conversation.profile.displayName,
+          conversation.profile.username,
+          conversation.profile.title,
+          conversation.profile.email,
+          conversation.chat?.lastMessageText || "",
+        ].join(" ").toLowerCase();
 
-      const matchesSearch = searchable.includes(searchQuery.toLowerCase());
-      const matchesTab = activeTab === "Unread" ? conversation.unread : true;
+        const matchesSearch = searchable.includes(searchQuery.toLowerCase());
+        const matchesTab = activeTab === "Unread" ? conversation.unread : true;
 
-      return matchesSearch && matchesTab;
-    });
-  }, [activeTab, conversations, searchQuery]);
+        return matchesSearch && matchesTab;
+      });
+  }, [activeTab, conversations, searchQuery, connectedUidSet]);
 
   const lastMessageBySelectedUser = [...messages]
     .reverse()
@@ -174,10 +185,21 @@ export default function MessagesPage() {
             );
           })}
 
-          {!loading && filteredConversations.length === 0 && (
-            <div className="px-5 py-10 text-center">
-              <p className="text-[13px] text-white mb-1">No users found</p>
-              <p className="text-[11px] text-[#71717a]">Profiles from Firestore `users` will appear here.</p>
+          {!loading && !connectionsLoading && filteredConversations.length === 0 && (
+            <div className="px-5 py-10 text-center flex flex-col items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#121212] border border-[#1e1e1e] flex items-center justify-center">
+                <UserPlus size={16} className="text-[#71717a]" />
+              </div>
+              <p className="text-[13px] text-white mb-0">No connections yet</p>
+              <p className="text-[11px] text-[#71717a] leading-relaxed">
+                Connect with people first to start messaging them.
+              </p>
+              <Link
+                href="/workspace/connections"
+                className="mt-1 px-3 py-1.5 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[11px] font-medium rounded-lg transition-colors"
+              >
+                Find Connections
+              </Link>
             </div>
           )}
         </div>
@@ -293,12 +315,21 @@ export default function MessagesPage() {
             </div>
           </>
         ) : (
-          <div className="m-auto max-w-sm text-center px-6">
-            <p className="text-[15px] font-medium text-white mb-2">No realtime users yet</p>
-            <p className="text-[12px] text-[#71717a]">
-              Once another signed-in user completes a Firestore profile, they will appear here for realtime chat.
+          <div className="m-auto max-w-sm text-center px-6 flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-[#121212] border border-[#1e1e1e] flex items-center justify-center">
+              <UserPlus size={20} className="text-[#71717a]" />
+            </div>
+            <p className="text-[15px] font-medium text-white">No connections yet</p>
+            <p className="text-[12px] text-[#71717a] leading-relaxed">
+              Connect with other Forge X members first, then you can start a realtime chat with them here.
             </p>
-            {error && <p className="mt-4 text-[12px] text-red-200">{error}</p>}
+            <Link
+              href="/workspace/connections"
+              className="mt-1 flex items-center gap-2 px-4 py-2 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[13px] font-medium rounded-lg transition-colors shadow-lg shadow-[#5e5ce6]/20"
+            >
+              <UserPlus size={14} /> Find Connections
+            </Link>
+            {error && <p className="mt-2 text-[12px] text-red-200">{error}</p>}
           </div>
         )}
       </motion.div>

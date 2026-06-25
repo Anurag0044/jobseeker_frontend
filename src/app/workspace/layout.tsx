@@ -8,8 +8,9 @@ import {
   Search, Bell, MessageSquare, ChevronDown, Sun,
   LayoutDashboard, User, FolderGit2, Briefcase,
   Lightbulb, FileText, Bookmark, Bot, Settings,
-  Crown, Box, UserPlus, ChevronRight, ArrowRight, ShieldCheck
+  Crown, Box, UserPlus, ChevronRight, ArrowRight, ShieldCheck, Link2
 } from "lucide-react";
+import { useConnections } from "../../hooks/useConnections";
 import ForgeXLogo from "../../components/ui/ForgeXLogo";
 import AuthGuard from "../../components/auth/AuthGuard";
 import ProfileOnboardingModal from "../../components/profile/ProfileOnboardingModal";
@@ -34,12 +35,13 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
 /* ─── Sidebar ──────────────────────────────────────────────── */
 
-const navItems = [
+const navItemsBase = [
   { href: "/workspace/profile", icon: User, label: "Profile" },
   { href: "/workspace/projects", icon: FolderGit2, label: "Projects" },
   { href: "/workspace/skills", icon: Lightbulb, label: "Skills" },
   { href: "/workspace/applications", icon: FileText, label: "Applications" },
-  { href: "/workspace/messages", icon: MessageSquare, label: "Messages", badge: "3" },
+  { href: "/workspace/messages", icon: MessageSquare, label: "Messages", badge: "" },
+  { href: "/workspace/connections", icon: Link2, label: "Connections", badge: "" },
   { href: "/workspace/saved", icon: Bookmark, label: "Saved" },
   { href: "/workspace/ai-agents", icon: Bot, label: "Forge Assistant" },
   { href: "/workspace/jobs", icon: Briefcase, label: "Jobs" },
@@ -49,9 +51,23 @@ const navItems = [
   { href: "/admin/users", icon: ShieldCheck, label: "Admin Panel" },
 ];
 
+function useSidebarBadges() {
+  const { pendingReceivedCount } = useConnections();
+  return { pendingReceivedCount };
+}
+
 function Sidebar() {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = React.useState<string | null>(null);
+  const { pendingReceivedCount } = useSidebarBadges();
+
+  // Inject realtime badges
+  const navItems = navItemsBase.map((item) => {
+    if (item.href === "/workspace/connections" && pendingReceivedCount > 0) {
+      return { ...item, badge: String(pendingReceivedCount) };
+    }
+    return item;
+  });
 
   const isActive = (href: string) => {
     if (href === "/workspace") return pathname === "/workspace";
