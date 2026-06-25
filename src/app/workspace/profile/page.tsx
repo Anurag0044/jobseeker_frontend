@@ -2,16 +2,15 @@
 
 import React, { useState } from "react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
-import { useUser } from "../../../hooks/useUser";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 import EditProfileModal from "../../../components/profile/EditProfileModal";
 import ShareProfileModal from "../../../components/profile/ShareProfileModal";
-import UserListModal from "../../../components/profile/UserListModal";
 import AddSkillModal from "../../../components/profile/AddSkillModal";
 import {
-  MapPin, Mail, MoreHorizontal, Star, ExternalLink, ArrowRight,
-  Eye, ShieldCheck, Code, Server, Database,
-  Terminal, Monitor, Box, Globe, Bot, Briefcase, User,
-  Link as LinkIcon, FolderGit2, Plus, Image, Award, Calendar, Upload, CloudUpload
+  MapPin, Mail, MoreHorizontal, ArrowRight,
+  Eye, ShieldCheck, Code, Server,
+  Monitor, Bot, Briefcase, User,
+  Link as LinkIcon, Plus, Image as ImageIcon, Award, Calendar, CloudUpload
 } from "lucide-react";
 import { skillsData } from "../../../data/skillsData";
 import { SiX } from "react-icons/si";
@@ -26,19 +25,46 @@ const itemVariants: Variants = {
   visible: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
 };
 
+function formatProfileDate(value: unknown) {
+  const date =
+    value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function"
+      ? value.toDate()
+      : value
+        ? new Date(String(value))
+        : null;
+
+  if (!date || Number.isNaN(date.getTime())) return "Not set";
+
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 export default function ProfilePage() {
+  const { displayProfile, saveProfile } = useForgeProfile();
   const [activeTab, setActiveTab] = useState("Overview");
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
-  const [mySkills, setMySkills] = useState<string[]>([
-    "React", "TypeScript", "Next.js", "Node.js", "Tailwind CSS", "MongoDB", "AWS", "Docker"
-  ]);
+  const [mySkills, setMySkills] = useState<string[]>([]);
+  const profileSkills = displayProfile
+    ? [...displayProfile.techStack, ...displayProfile.skills].filter((skill) => skillsData.some((item) => item.name === skill))
+    : [];
+  const displayedSkills = mySkills.length
+    ? mySkills
+    : profileSkills.length
+      ? Array.from(new Set(profileSkills))
+      : [];
 
   const handleToggleSkill = (skillName: string) => {
-    setMySkills((prev) =>
-      prev.includes(skillName)
-        ? prev.filter((s) => s !== skillName)
-        : [...prev, skillName]
-    );
+    setMySkills((prev) => {
+      const base = prev.length ? prev : displayedSkills;
+      const next = base.includes(skillName)
+        ? base.filter((s) => s !== skillName)
+        : [...base, skillName];
+
+      saveProfile({ skills: next }, false).catch((error) => {
+        console.error("Unable to sync skills", error);
+      });
+
+      return next;
+    });
   };
 
   return (
@@ -68,7 +94,7 @@ export default function ProfilePage() {
               </div>
               <div className="xl:col-span-5 flex flex-col gap-6">
                 <Skills
-                  mySkills={mySkills}
+                  mySkills={displayedSkills}
                   onOpenModal={() => setIsSkillModalOpen(true)}
                 />
                 <RecentActivity />
@@ -99,7 +125,7 @@ export default function ProfilePage() {
       <AddSkillModal
         isOpen={isSkillModalOpen}
         onClose={() => setIsSkillModalOpen(false)}
-        selectedSkills={mySkills}
+        selectedSkills={displayedSkills}
         onToggleSkill={handleToggleSkill}
       />
     </div>
@@ -109,25 +135,35 @@ export default function ProfilePage() {
 /* ─── Profile Header ────────────────────────────────────── */
 
 function ProfileHeader() {
-  const { user } = useUser();
+  const { displayProfile, saveProfile } = useForgeProfile();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [userListModalTitle, setUserListModalTitle] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState({
-    displayName: user?.displayName || "Sujal Chandra",
-    userId: "sujal_chandra",
-    title: "Full Stack Developer",
-    bio: "I build scalable web applications and AI-powered tools that solve real-world problems. Always learning, always building.",
-    location: "Worldwide",
-    portfolioUrl: "user.portfolio.dev",
-    github: "github.com/sujal",
-    linkedin: "linkedin.com/in/sujal",
-    twitter: "twitter.com/sujal",
-  });
+  const profileData = {
+    displayName: displayProfile?.displayName || "Forge User",
+    userId: displayProfile?.username || "forge_user",
+    title: displayProfile?.title || "Full Stack Developer",
+    bio:
+      displayProfile?.bio ||
+      "I build scalable web applications and AI-powered tools that solve real-world problems. Always learning, always building.",
+    location: displayProfile?.location || "Worldwide",
+    portfolioUrl: displayProfile?.portfolioUrl || "",
+    github: displayProfile?.github || "",
+    linkedin: displayProfile?.linkedin || "",
+    twitter: "",
+    photoURL: displayProfile?.photoURL || "",
+  };
 
   const displayName = profileData.displayName;
   const firstLetter = displayName.charAt(0).toUpperCase();
-  const email = user?.email || "user@example.com";
+  const email = displayProfile?.email || "user@example.com";
+  const stats = [
+    ["Projects", "0"],
+    ["Followers", "0"],
+    ["Profile Views", "0"],
+    ["Connections", "0"],
+    ["Responses", "0%"],
+    ["Member Since", formatProfileDate(displayProfile?.createdAt)],
+  ];
 
   return (
     <motion.div variants={itemVariants} className="flex flex-col w-full relative">
@@ -135,24 +171,31 @@ function ProfileHeader() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         initialData={profileData}
-        onSave={(data) => setProfileData(data)}
+        onSave={(data) =>
+          saveProfile({
+            displayName: data.displayName,
+            username: data.userId,
+            title: data.title,
+            bio: data.bio,
+            location: data.location,
+            portfolioUrl: data.portfolioUrl,
+            github: data.github,
+            linkedin: data.linkedin,
+            photoURL: data.photoURL,
+          })
+        }
       />
       <ShareProfileModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         profileUrl={`forgex.app/@${profileData.userId}`}
       />
-      <UserListModal
-        isOpen={!!userListModalTitle}
-        onClose={() => setUserListModalTitle(null)}
-        title={userListModalTitle || ""}
-      />
       <div className="flex flex-wrap justify-between items-start gap-8 w-full">
         <div className="flex flex-col sm:flex-row gap-6 flex-1 min-w-[320px]">
           <div className="relative shrink-0 self-start">
             <div className="w-[120px] h-[120px] rounded-full overflow-hidden border border-[#262626] bg-[#121212] flex items-center justify-center">
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt={displayName} className="w-full h-full object-cover" />
+              {profileData.photoURL ? (
+                <img src={profileData.photoURL} alt={displayName} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[40px] font-bold text-[#b19cd9]">{firstLetter}</div>
               )}
@@ -212,19 +255,14 @@ function ProfileHeader() {
             <button onClick={() => setIsShareModalOpen(true)} className="w-8 h-8 flex items-center justify-center bg-[#121212] border border-[#262626] text-white rounded-full hover:bg-[#1A1A1A] transition-colors"><MoreHorizontal size={14} /></button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-6 text-left xl:text-right w-full xl:w-auto">
-            {[
-              ["Projects", "18"], ["Followers", "1.2K"], ["Profile Views", "4.2K"],
-              ["Connections", "342"], ["Responses", "89%"], ["Member Since", "Jan 2024"],
-            ].map(([label, value], i) => {
-              const isInteractive = ["Projects", "Followers", "Connections"].includes(label);
+            {stats.map(([label, value], i) => {
               return (
                 <div
                   key={i}
-                  className={`flex flex-col ${isInteractive ? "cursor-pointer hover:bg-[#1A1A1A] rounded-lg transition-colors p-2 -m-2 group" : ""}`}
-                  onClick={() => isInteractive && setUserListModalTitle(label)}
+                  className="flex flex-col"
                 >
                   <span className="text-[12px] font-medium text-[#a1a1aa] mb-1 whitespace-nowrap">{label}</span>
-                  <span className={`text-[16px] font-semibold tracking-tight leading-none transition-colors ${isInteractive ? "text-[#b19cd9] group-hover:text-white" : "text-white"}`}>{value}</span>
+                  <span className="text-[16px] font-semibold tracking-tight leading-none text-white">{value}</span>
                 </div>
               );
             })}
@@ -263,72 +301,31 @@ function NavigationTabs({ activeTab, setActiveTab }: { activeTab: string, setAct
 /* ─── About Me ──────────────────────────────────────────── */
 
 function AboutMe() {
+  const { displayProfile } = useForgeProfile();
+  const tags = (displayProfile?.techStack || []).slice(0, 4);
+  const icons = [Monitor, Bot, Server, Code];
+
   return (
     <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-6">
       <h3 className="text-[24px] font-bold tracking-tight text-white mb-5">About Me</h3>
       <p className="text-[17px] text-[#e5e2e1] leading-[1.8] mb-8">
-        I&apos;m a Computer Science student and a builder. I love turning ideas into real products using modern technologies. Currently focused on scalable web apps, AI agents, and developer tools.
+        {displayProfile?.bio || "No bio added yet."}
       </p>
-      <div className="flex flex-wrap gap-2">
-        {[
-          { icon: <Monitor size={14} />, label: "Web Development" },
-          { icon: <Bot size={14} />, label: "AI & ML" },
-          { icon: <Server size={14} />, label: "System Design" },
-          { icon: <Code size={14} />, label: "Open Source" },
-        ].map((tag, i) => (
-          <span key={i} className="px-3 py-1.5 bg-[#1A1A1A] border border-[#262626] rounded-md text-[12px] text-[#e5e2e1] flex items-center gap-2">
-            <span className="text-[#a1a1aa]">{tag.icon}</span> {tag.label}
-          </span>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+      {tags.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((label, i) => {
+            const Icon = icons[i] || Code;
 
-/* ─── Projects ──────────────────────────────────────────── */
-
-function Projects() {
-  const projects = [
-    { title: "Orion AI Agent", desc: "Multi-agent AI system for productivity automation.", tags: ["Next.js", "TypeScript", "OpenAI"], stars: "1.2K" },
-    { title: "DevFlow", desc: "Developer collaboration platform with real-time features.", tags: ["React", "Node.js", "Socket.io"], stars: "892" },
-    { title: "TaskPilot", desc: "AI-powered task management and productivity tool.", tags: ["Next.js", "Tailwind", "Prisma"], stars: "645" },
-  ];
-
-  return (
-    <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-6">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-[24px] font-bold tracking-tight text-white">Projects</h3>
-        <button className="text-[15px] font-medium text-[#b19cd9] hover:text-[#c2c1ff] transition-colors">View All</button>
-      </div>
-      <div className="flex flex-col gap-5">
-        {projects.map((proj, i) => (
-          <div key={i} className="flex gap-4">
-            <div className="w-12 h-12 rounded-lg border border-[#262626] bg-[#1A1A1A] flex items-center justify-center shrink-0">
-              <FolderGit2 size={18} className="text-[#b19cd9]" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <h4 className="text-[14px] font-medium text-white">{proj.title}</h4>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 text-[#71717a] text-[12px]"><Star size={12} /> {proj.stars}</div>
-                  <ExternalLink size={14} className="text-[#71717a] cursor-pointer hover:text-white transition-colors" />
-                </div>
-              </div>
-              <p className="text-[12px] text-[#a1a1aa] mb-2">{proj.desc}</p>
-              <div className="flex items-center gap-2">
-                {proj.tags.map((tag, j) => (
-                  <span key={j} className="text-[11px] text-[#71717a] bg-[#1A1A1A] px-2 py-0.5 rounded">{tag}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="w-full flex justify-center mt-6 pt-4 border-t border-[#1e1e1e]">
-        <button className="text-[13px] text-[#b19cd9] flex items-center gap-1.5 hover:text-[#c2c1ff] transition-colors">
-          View All Projects <ArrowRight size={14} />
-        </button>
-      </div>
+            return (
+              <span key={label} className="px-3 py-1.5 bg-[#1A1A1A] border border-[#262626] rounded-md text-[12px] text-[#e5e2e1] flex items-center gap-2">
+                <span className="text-[#a1a1aa]"><Icon size={14} /></span> {label}
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-[13px] text-[#71717a]">Add your tech stack to show live profile context here.</p>
+      )}
     </motion.div>
   );
 }
@@ -356,40 +353,6 @@ function Skills({ mySkills, onOpenModal }: { mySkills: string[], onOpenModal: ()
   const row1 = fillRow(chunk1.length ? chunk1 : activeSkillsData);
   const row2 = fillRow(chunk2.length ? chunk2 : activeSkillsData);
   const row3 = fillRow(chunk3.length ? chunk3 : activeSkillsData);
-
-  const MarqueeRow = ({ items, reverse = false }: { items: typeof skillsData, reverse?: boolean }) => (
-    <div className="flex overflow-hidden w-full relative group/row">
-      {/* Gradient Mask for fading edges */}
-      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none"></div>
-      <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none"></div>
-
-      <div className={`flex gap-3 w-max px-1.5 ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'} group-hover/row:[animation-play-state:paused]`}>
-        {/* Render twice for infinite loop */}
-        {[...items, ...items].map((skill, i) => (
-          <div key={i} className="flex items-center justify-center p-2.5 bg-[#0A0A0A] border border-[#1e1e1e] rounded-xl hover:bg-[#1A1A1A] transition-colors group cursor-default relative overflow-hidden shrink-0">
-            {/* The icon */}
-            <skill.icon
-              size={20}
-              className="text-[#a1a1aa] transition-all duration-300 group-hover:scale-110"
-              style={{ filter: "grayscale(100%) brightness(0.8)" }}
-            />
-            {/* Hover overlay that reveals the color and name */}
-            <div
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 backdrop-blur-sm"
-              style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-            >
-              <skill.icon size={20} style={{ color: skill.color }} className="scale-110 drop-shadow-lg" />
-            </div>
-
-            {/* Optional Tooltip on Hover */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#1A1A1A] border border-[#2a2a2a] rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30 shadow-xl">
-              {skill.name}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-6 overflow-hidden">
@@ -428,29 +391,50 @@ function Skills({ mySkills, onOpenModal }: { mySkills: string[], onOpenModal: ()
   );
 }
 
+function MarqueeRow({ items, reverse = false }: { items: typeof skillsData, reverse?: boolean }) {
+  return (
+    <div className="flex overflow-hidden w-full relative group/row">
+      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none"></div>
+      <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none"></div>
+
+      <div className={`flex gap-3 w-max px-1.5 ${reverse ? "animate-marquee-reverse" : "animate-marquee"} group-hover/row:[animation-play-state:paused]`}>
+        {[...items, ...items].map((skill, i) => (
+          <div key={`${skill.name}-${i}`} className="flex items-center justify-center p-2.5 bg-[#0A0A0A] border border-[#1e1e1e] rounded-xl hover:bg-[#1A1A1A] transition-colors group cursor-default relative overflow-hidden shrink-0">
+            <skill.icon
+              size={20}
+              className="text-[#a1a1aa] transition-all duration-300 group-hover:scale-110"
+              style={{ filter: "grayscale(100%) brightness(0.8)" }}
+            />
+            <div
+              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 backdrop-blur-sm"
+              style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+            >
+              <skill.icon size={20} style={{ color: skill.color }} className="scale-110 drop-shadow-lg" />
+            </div>
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#1A1A1A] border border-[#2a2a2a] rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30 shadow-xl">
+              {skill.name}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Recent Activity ───────────────────────────────────── */
 
 function RecentActivity() {
-  const activities = [
-    { icon: <Briefcase size={14} />, text: "Applied for Senior Frontend Developer at Stripe", time: "2h ago" },
-    { icon: <Eye size={14} />, text: "Your project Orion AI Agent got 45 views", time: "5h ago" },
-    { icon: <User size={14} />, text: "New connection request from Sarah Johnson", time: "1d ago" },
-  ];
-
   return (
     <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-[15px] font-semibold text-white">Recent Activity</h3>
         <button className="text-[12px] text-[#b19cd9] hover:text-[#c2c1ff] transition-colors">View All</button>
       </div>
-      <div className="flex flex-col gap-5">
-        {activities.map((act, i) => (
-          <div key={i} className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-[#1A1A1A] border border-[#262626] flex items-center justify-center shrink-0 text-[#a1a1aa]">{act.icon}</div>
-            <span className="text-[13px] text-[#e5e2e1] flex-1">{act.text}</span>
-            <span className="text-[11px] text-[#71717a]">{act.time}</span>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center py-10 border border-dashed border-[#262626] rounded-xl bg-[#0A0A0A]">
+        <div className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#262626] flex items-center justify-center text-[#a1a1aa] mb-3">
+          <Eye size={16} />
+        </div>
+        <p className="text-[13px] text-[#a1a1aa]">Realtime activity will appear here when Firestore events are added.</p>
       </div>
     </motion.div>
   );
@@ -459,8 +443,10 @@ function RecentActivity() {
 /* ─── AI Career Insight ─────────────────────────────────── */
 
 function CareerInsight() {
-  const { user } = useUser();
-  const firstName = user?.displayName ? user.displayName.split(" ")[0] : "there";
+  const { displayProfile } = useForgeProfile();
+  const firstName = displayProfile?.displayName ? displayProfile.displayName.split(" ")[0] : "there";
+  const leadSkill = displayProfile?.skills?.[0] || displayProfile?.techStack?.[0] || "System Design";
+  const targetRole = displayProfile?.title || "Frontend";
 
   return (
     <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-6">
@@ -471,7 +457,7 @@ function CareerInsight() {
       <div className="flex items-start gap-3 mb-6 bg-[#0A0A0A] p-4 rounded-lg border border-[#1e1e1e]">
         <Bot size={16} className="text-[#b19cd9] shrink-0 mt-0.5" />
         <p className="text-[13px] text-[#a1a1aa] leading-relaxed">
-          Great progress, {firstName}! You&apos;re a <span className="text-white font-medium">good match</span> for <span className="text-white font-medium">Senior Frontend</span> roles. Strengthen your System Design skills to increase match rate.
+          Great progress, {firstName}! You&apos;re a <span className="text-white font-medium">good match</span> for <span className="text-white font-medium">{targetRole}</span> roles. Strengthen your {leadSkill} story to increase match rate.
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -513,21 +499,13 @@ function PortfolioSection() {
           </div>
         </button>
 
-        {/* Existing Items (Mock) */}
-        {[
-          { title: "Orion AI Agent UI", type: "Web Design" },
-          { title: "DevFlow Dashboard", type: "Web App" }
-        ].map((item, i) => (
-          <div key={i} className="h-[240px] rounded-xl border border-[#1e1e1e] bg-[#121212] overflow-hidden group cursor-pointer relative">
-            <div className="w-full h-[160px] bg-[#1e1e1e] flex items-center justify-center text-[#3f3f46]">
-              <Image size={32} />
-            </div>
-            <div className="p-4">
-              <h4 className="text-[14px] font-semibold text-white mb-1">{item.title}</h4>
-              <p className="text-[12px] text-[#71717a]">{item.type}</p>
-            </div>
+        <div className="h-[240px] rounded-xl border border-dashed border-[#262626] bg-[#0A0A0A] flex flex-col items-center justify-center gap-3 text-center px-6">
+          <ImageIcon size={28} className="text-[#3f3f46]" />
+          <div>
+            <h4 className="text-[14px] font-semibold text-white mb-1">No Firestore projects yet</h4>
+            <p className="text-[12px] text-[#71717a]">Projects will appear here after they are saved for this user.</p>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -545,25 +523,10 @@ function ExperienceSection() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-6 pl-2 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#1e1e1e]">
-        {[
-          { role: "Senior Frontend Developer", company: "Stripe", period: "2023 - Present", desc: "Leading the core UI architecture for the payment dashboard." },
-          { role: "Software Engineer", company: "Vercel", period: "2021 - 2023", desc: "Built features for Next.js and Vercel dashboard." }
-        ].map((exp, i) => (
-          <div key={i} className="flex gap-6 relative">
-            <div className="w-8 h-8 rounded-full bg-[#121212] border border-[#262626] flex items-center justify-center shrink-0 z-10 text-[#b19cd9]">
-              <Briefcase size={14} />
-            </div>
-            <div className="flex flex-col flex-1 pb-6 border-b border-[#1e1e1e]/50 last:border-0 last:pb-0">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-[16px] font-bold text-white">{exp.role}</h3>
-                <span className="text-[12px] text-[#71717a] flex items-center gap-1"><Calendar size={12} /> {exp.period}</span>
-              </div>
-              <span className="text-[14px] text-[#b19cd9] font-medium mb-3">{exp.company}</span>
-              <p className="text-[14px] text-[#a1a1aa] leading-relaxed">{exp.desc}</p>
-            </div>
-          </div>
-        ))}
+      <div className="rounded-xl border border-dashed border-[#262626] bg-[#0A0A0A] p-10 text-center">
+        <Briefcase size={24} className="mx-auto mb-3 text-[#3f3f46]" />
+        <h3 className="text-[15px] font-semibold text-white mb-1">No Firestore experience yet</h3>
+        <p className="text-[13px] text-[#71717a]">Experience entries will render here once saved for this user.</p>
       </div>
     </div>
   );
@@ -581,25 +544,10 @@ function AchievementsSection() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[
-          { title: "AWS Certified Solutions Architect", issuer: "Amazon Web Services", year: "2023" },
-          { title: "Hackathon Winner", issuer: "Global AI Summit", year: "2022" }
-        ].map((award, i) => (
-          <div key={i} className="flex gap-4 p-5 rounded-xl border border-[#1e1e1e] bg-[#121212] hover:bg-[#141414] transition-colors group cursor-pointer">
-            <div className="w-12 h-12 rounded-full bg-[#1A1A1A] border border-[#262626] flex items-center justify-center shrink-0 text-[#b19cd9] group-hover:scale-110 transition-transform">
-              <Award size={20} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-[15px] font-semibold text-white mb-1">{award.title}</h4>
-              <div className="flex items-center gap-3 text-[13px] text-[#71717a]">
-                <span className="text-[#a1a1aa]">{award.issuer}</span>
-                <span>•</span>
-                <span>{award.year}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="rounded-xl border border-dashed border-[#262626] bg-[#0A0A0A] p-10 text-center">
+        <Award size={24} className="mx-auto mb-3 text-[#3f3f46]" />
+        <h3 className="text-[15px] font-semibold text-white mb-1">No Firestore achievements yet</h3>
+        <p className="text-[13px] text-[#71717a]">Achievements will render here once saved for this user.</p>
       </div>
     </div>
   );

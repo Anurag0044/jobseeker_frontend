@@ -5,9 +5,10 @@ import { motion, Variants } from "framer-motion";
 import {
   Briefcase, TrendingUp, FileText, Sparkles,
   ShieldCheck, FolderGit2, Target, Lightbulb,
-  MessageSquare, ArrowRight, CheckCircle2, ChevronRight,
-  Eye
+  MessageSquare, ArrowRight, CheckCircle2, ChevronRight
 } from "lucide-react";
+import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -31,6 +32,8 @@ const itemVariants: Variants = {
    ════════════════════════════════════════════════════════════ */
 
 export default function ForgeAssistantPage() {
+  const { displayProfile } = useForgeProfile();
+
   return (
     <div className="px-8 pb-16 pt-8">
       <motion.div
@@ -40,15 +43,17 @@ export default function ForgeAssistantPage() {
         className="max-w-[1100px] mx-auto flex flex-col gap-8"
       >
         {/* Hero Greeting */}
-        <HeroGreeting />
+        <HeroGreeting name={displayProfile?.displayName} />
+
+        <ProfileContextStrip label="AI Assistant Memory" />
 
         {/* 3 Action Cards */}
-        <ActionCards />
+        <ActionCards stack={displayProfile?.techStack || []} />
 
         {/* Split: Intelligence Feed + Recommendation */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <IntelligenceFeed />
-          <Recommendation />
+          <IntelligenceFeed profileName={displayProfile?.displayName} stack={displayProfile?.techStack || []} />
+          <Recommendation stack={displayProfile?.techStack || []} skills={displayProfile?.skills || []} />
         </div>
 
         {/* Forge Assistant Actions */}
@@ -60,7 +65,9 @@ export default function ForgeAssistantPage() {
 
 /* ─── Hero Greeting ─────────────────────────────────────── */
 
-function HeroGreeting() {
+function HeroGreeting({ name }: { name?: string }) {
+  const firstName = name?.split(" ")[0] || "there";
+
   return (
     <motion.div variants={itemVariants} className="relative flex flex-col items-center text-center py-12 overflow-hidden rounded-2xl">
       {/* Aurora background effect */}
@@ -86,7 +93,7 @@ function HeroGreeting() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-3">
-        <h1 className="text-[32px] font-semibold text-white tracking-tight">Good Evening, Orion.</h1>
+        <h1 className="text-[32px] font-semibold text-white tracking-tight">Good Evening, {firstName}.</h1>
         <p className="text-[14px] text-[#a1a1aa] max-w-md leading-relaxed">
           I&apos;ve reviewed your profile, projects, opportunities, and recent activity.<br />
           Three recommendations are ready.
@@ -98,12 +105,13 @@ function HeroGreeting() {
 
 /* ─── Action Cards ──────────────────────────────────────── */
 
-function ActionCards() {
+function ActionCards({ stack }: { stack: string[] }) {
+  const leadStack = stack[0] || "frontend";
   const cards = [
     {
       icon: <Briefcase size={20} className="text-[#5e5ce6]" />,
       title: "Opportunity Found",
-      desc: "A frontend role aligns with your recent project work and portfolio.",
+      desc: `A ${leadStack} role aligns with your recent project work and profile.`,
       primary: "Review Opportunity",
       secondary: "Save For Later",
     },
@@ -148,11 +156,13 @@ function ActionCards() {
 
 /* ─── Intelligence Feed ─────────────────────────────────── */
 
-function IntelligenceFeed() {
+function IntelligenceFeed({ profileName, stack }: { profileName?: string; stack: string[] }) {
+  const firstName = profileName?.split(" ")[0] || "Your";
+  const leadStack = stack[0] || "Frontend";
   const items = [
-    { icon: <ShieldCheck size={14} />, color: "text-[#5e5ce6]", text: "Your Orion project demonstrates strong system design capabilities.", time: "1h ago" },
-    { icon: <Briefcase size={14} />, color: "text-[#c2c1ff]", text: "A new Frontend Engineer opportunity was discovered based on your portfolio.", time: "3h ago" },
-    { icon: <TrendingUp size={14} />, color: "text-[#a3e635]", text: "Frontend opportunities in your preferred stack increased this week.", time: "6h ago" },
+    { icon: <ShieldCheck size={14} />, color: "text-[#5e5ce6]", text: `${firstName}'s profile shows strong ${leadStack} alignment.`, time: "Live" },
+    { icon: <Briefcase size={14} />, color: "text-[#c2c1ff]", text: `A new ${leadStack} opportunity was discovered based on your portfolio.`, time: "3h ago" },
+    { icon: <TrendingUp size={14} />, color: "text-[#a3e635]", text: `${leadStack} opportunities in your preferred stack increased this week.`, time: "6h ago" },
     { icon: <Sparkles size={14} />, color: "text-[#ffb786]", text: "Your recent project may strengthen future applications.", time: "12h ago" },
   ];
 
@@ -188,7 +198,14 @@ function IntelligenceFeed() {
 
 /* ─── Recommendation ────────────────────────────────────── */
 
-function Recommendation() {
+function Recommendation({ stack, skills }: { stack: string[]; skills: string[] }) {
+  const reasons = [
+    stack[0] ? `Strong ${stack[0]} experience` : "Strong React and TypeScript experience",
+    stack[1] ? `Relevant ${stack[1]} project work` : "Relevant portfolio projects",
+    skills[0] ? `${skills[0]} is visible in your profile` : "Similar technology stack",
+    "Active hiring demand",
+  ];
+
   return (
     <motion.div variants={itemVariants} className="flex flex-col p-6 bg-[#121212] border border-[#1e1e1e] rounded-xl relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#5e5ce6] to-[#c2c1ff]"></div>
@@ -214,7 +231,7 @@ function Recommendation() {
       <div className="mb-5">
         <span className="text-[11px] font-mono uppercase tracking-widest text-[#71717a] block mb-3">Why this was suggested</span>
         <div className="flex flex-col gap-2">
-          {["Strong React and TypeScript experience", "Relevant portfolio projects", "Similar technology stack", "Active hiring demand"].map((r, i) => (
+          {reasons.map((r, i) => (
             <div key={i} className="flex items-center gap-2 text-[13px] text-[#e5e2e1]">
               <CheckCircle2 size={14} className="text-[#a3e635] shrink-0" />
               {r}

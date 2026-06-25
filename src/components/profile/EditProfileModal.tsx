@@ -2,45 +2,84 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, MapPin, Mail, Link as LinkIcon, User, Briefcase, Box } from "lucide-react";
-import { useUser } from "../../hooks/useUser";
+import { X, Camera, MapPin, Link as LinkIcon, User, Briefcase, Box } from "lucide-react";
+import { uploadImageToCloudinary } from "../../lib/cloudinary";
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialData: any;
-  onSave: (data: any) => void;
+  initialData: EditProfileFormData;
+  onSave: (data: EditProfileFormData) => void | Promise<void>;
 }
 
 type TabType = "General" | "Socials" | "Skills" | "Preferences";
 
 export default function EditProfileModal({ isOpen, onClose, initialData, onSave }: EditProfileModalProps) {
-  const { user } = useUser();
+  if (!isOpen) return null;
+
+  return (
+    <EditProfileModalContent
+      key={`${initialData.userId}-${initialData.photoURL}`}
+      onClose={onClose}
+      initialData={initialData}
+      onSave={onSave}
+    />
+  );
+}
+
+interface EditProfileFormData {
+  displayName: string;
+  userId: string;
+  title: string;
+  bio: string;
+  location: string;
+  portfolioUrl: string;
+  github: string;
+  linkedin: string;
+  twitter: string;
+  photoURL: string;
+}
+
+function EditProfileModalContent({ onClose, initialData, onSave }: Omit<EditProfileModalProps, "isOpen">) {
   const [activeTab, setActiveTab] = useState<TabType>("General");
   const [isSaving, setIsSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [error, setError] = useState("");
 
   // Form State
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState<EditProfileFormData>(initialData);
 
-  // Update internal state if initialData changes
-  React.useEffect(() => {
-    if (isOpen) {
-      setFormData(initialData);
-    }
-  }, [isOpen, initialData]);
-
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError("");
+
+    try {
+      let photoURL = formData.photoURL || "";
+      if (imageFile) {
+        const upload = await uploadImageToCloudinary(imageFile);
+        photoURL = upload.secure_url;
+      }
+
+      await onSave({ ...formData, photoURL });
       setIsSaving(false);
-      onSave(formData);
       onClose();
-    }, 800);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save your profile.");
+      setIsSaving(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -49,8 +88,6 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSave 
       handleSave();
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
@@ -122,12 +159,13 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSave 
                       <div className="flex items-center gap-6">
                         <div className="relative group cursor-pointer">
                           <div className="w-20 h-20 rounded-full border border-[#262626] bg-[#121212] overflow-hidden flex items-center justify-center">
-                            {user?.photoURL ? (
-                              <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                            {previewUrl || formData.photoURL ? (
+                              <img src={previewUrl || formData.photoURL} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-[24px] font-bold text-[#b19cd9]">{formData.displayName.charAt(0)}</span>
                             )}
                           </div>
+                          <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                             <Camera size={20} className="text-white" />
                           </div>
@@ -136,8 +174,21 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSave 
                           <span className="text-[14px] font-medium text-white mb-1">Profile Picture</span>
                           <span className="text-[12px] text-[#71717a] mb-3">JPG, GIF or PNG. Max size of 800K</span>
                           <div className="flex gap-2">
-                            <button className="px-3 py-1.5 text-[12px] font-medium text-black bg-[#e5e2e1] rounded-md hover:bg-white transition-colors">Upload</button>
-                            <button className="px-3 py-1.5 text-[12px] font-medium text-black bg-[#e5e2e1] rounded-md hover:bg-white transition-colors">Remove</button>
+                            <label className="px-3 py-1.5 text-[12px] font-medium text-black bg-[#e5e2e1] rounded-md hover:bg-white transition-colors cursor-pointer">
+                              Upload
+                              <input type="file" accept="image/*" onChange={handleImageChange} className="sr-only" />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImageFile(null);
+                                setPreviewUrl("");
+                                setFormData({ ...formData, photoURL: "" });
+                              }}
+                              className="px-3 py-1.5 text-[12px] font-medium text-black bg-[#e5e2e1] rounded-md hover:bg-white transition-colors"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -202,6 +253,12 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSave 
                       <p className="text-[13px] text-[#a1a1aa]">Job preferences & availability coming soon.</p>
                     </div>
                   )}
+
+                  {error && (
+                    <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">
+                      {error}
+                    </p>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -231,7 +288,21 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSave 
 }
 
 // Helper component for sleek inputs
-function InputField({ label, name, value, onChange, onKeyDown, icon }: { label: string, name: string, value: string, onChange: any, onKeyDown?: any, icon?: React.ReactNode }) {
+function InputField({
+  label,
+  name,
+  value,
+  onChange,
+  onKeyDown,
+  icon,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[12px] font-medium text-[#a1a1aa]">{label}</label>

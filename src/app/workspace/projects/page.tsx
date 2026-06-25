@@ -5,13 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Settings, LayoutGrid, List, ChevronDown, Search, Filter, Hash, StretchHorizontal
 } from "lucide-react";
-import { useProjectStore, Project } from "../../../store/useProjectStore";
+import { useProjectStore, Project, type SortMethod } from "../../../store/useProjectStore";
 import ProjectCard from "../../../components/projects/ProjectCard";
 import CreateProjectModal from "../../../components/projects/CreateProjectModal";
 import ProjectDrawer from "../../../components/projects/ProjectDrawer";
 import EmptyStates from "../../../components/ui/EmptyStates";
+import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 
 export default function ProjectsPage() {
+  const { displayProfile } = useForgeProfile();
   const { 
     projects, viewMode, sortMethod, searchQuery, 
     setViewMode, setSortMethod, setSearchQuery 
@@ -78,7 +81,9 @@ export default function ProjectsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-[28px] font-semibold text-white tracking-tight mb-1">Projects</h1>
-            <p className="text-[14px] text-[#a1a1aa]">Manage your portfolio, open source, and side projects.</p>
+            <p className="text-[14px] text-[#a1a1aa]">
+              Manage {displayProfile?.displayName ? `${displayProfile.displayName.split(" ")[0]}'s` : "your"} portfolio, open source, and side projects.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-[#121212] border border-[#262626] text-white text-[13px] font-medium rounded-lg hover:bg-[#1A1A1A] transition-colors">
@@ -92,6 +97,8 @@ export default function ProjectsPage() {
             </button>
           </div>
         </div>
+
+        <ProfileContextStrip label="Project Match Context" />
 
         {/* Command Palette Style Search & Filters */}
         <div className="flex items-center gap-4 p-2 bg-[#121212] border border-[#262626] rounded-xl relative focus-within:border-[#b19cd9] focus-within:ring-1 focus-within:ring-[#b19cd9]/50 transition-all">
@@ -139,7 +146,7 @@ export default function ProjectsPage() {
               <select 
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 value={sortMethod}
-                onChange={(e) => setSortMethod(e.target.value as any)}
+                onChange={(e) => setSortMethod(e.target.value as SortMethod)}
               >
                 <option value="latest">Latest</option>
                 <option value="oldest">Oldest</option>

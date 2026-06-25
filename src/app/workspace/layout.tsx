@@ -11,18 +11,24 @@ import {
   Crown, Box, UserPlus, ChevronRight, ArrowRight, ShieldCheck
 } from "lucide-react";
 import ForgeXLogo from "../../components/ui/ForgeXLogo";
+import AuthGuard from "../../components/auth/AuthGuard";
+import ProfileOnboardingModal from "../../components/profile/ProfileOnboardingModal";
+import { useForgeProfile } from "../../hooks/useForgeProfile";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-screen w-full flex overflow-hidden font-body-sm text-body-sm antialiased bg-[#050505] bg-aurora text-[#e5e2e1] p-4 gap-4">
-      <Sidebar />
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#0A0A0A]/90 backdrop-blur-3xl rounded-[32px] border border-white/5 shadow-2xl">
-        <TopBar />
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {children}
-        </div>
-      </main>
-    </div>
+    <AuthGuard>
+      <div className="h-screen w-full flex overflow-hidden font-body-sm text-body-sm antialiased bg-[#050505] bg-aurora text-[#e5e2e1] p-4 gap-4">
+        <Sidebar />
+        <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#0A0A0A]/90 backdrop-blur-3xl rounded-[32px] border border-white/5 shadow-2xl">
+          <TopBar />
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {children}
+          </div>
+        </main>
+        <ProfileOnboardingModal />
+      </div>
+    </AuthGuard>
   );
 }
 
@@ -189,13 +195,13 @@ function NavItem({ href, icon, label, active, badge, iconAnim, isHovered, onHove
 
 /* ─── TopBar ───────────────────────────────────────────────── */
 
-import { useUser } from "../../hooks/useUser";
-
 function TopBar() {
-  const { user } = useUser();
+  const { displayProfile } = useForgeProfile();
 
-  const displayName = user?.displayName || "Forge User";
+  const displayName = displayProfile?.displayName || "Forge User";
   const firstLetter = displayName.charAt(0).toUpperCase();
+  const profileImage = displayProfile?.photoURL;
+  const username = displayProfile?.username || "forge_user";
 
   return (
     <header className="h-16 flex items-center justify-between px-8 shrink-0 bg-[#0A0A0A]/70 backdrop-blur-xl sticky top-0 z-20 border-b border-white/5 relative">
@@ -231,8 +237,8 @@ function TopBar() {
 
         <div className="flex items-center gap-3 cursor-pointer group">
           <div className="w-8 h-8 rounded-full overflow-hidden border border-[#262626] bg-[#1A1A1A] flex items-center justify-center">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={displayName} className="w-full h-full object-cover" />
+            {profileImage ? (
+              <img src={profileImage} alt={displayName} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[13px] font-semibold text-[#b19cd9]">
                 {firstLetter}
@@ -243,7 +249,7 @@ function TopBar() {
             <span className="text-[14px] font-medium text-white group-hover:text-gray-200 transition-colors">
               {displayName}
             </span>
-            <span className="text-[13px] text-[#a1a1aa]">View Profile</span>
+            <span className="text-[13px] text-[#a1a1aa]">@{username}</span>
           </div>
           <ChevronDown size={14} className="text-[#71717a] ml-1" />
         </div>

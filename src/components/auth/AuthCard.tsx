@@ -6,6 +6,7 @@ import { FirebaseError } from "firebase/app";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
+  createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
@@ -20,6 +21,7 @@ import {
   requireFirebaseAuth,
 } from "../../lib/firebase";
 
+type AuthMode = "signIn" | "signUp";
 type AuthAction = "password" | "github" | "google" | "reset" | null;
 
 function getAuthErrorMessage(error: unknown) {
@@ -29,9 +31,16 @@ function getAuthErrorMessage(error: unknown) {
 
   switch (error.code) {
     case "auth/invalid-credential":
+    case "auth/invalid-email":
     case "auth/user-not-found":
     case "auth/wrong-password":
       return "Email or password is incorrect.";
+    case "auth/email-already-in-use":
+      return "An account already exists with this email. Sign in instead.";
+    case "auth/weak-password":
+      return "Use a stronger password with at least 6 characters.";
+    case "auth/operation-not-allowed":
+      return "Email and password sign-in is not enabled for this Firebase project.";
     case "auth/account-exists-with-different-credential":
       return "An account already exists with this email using another sign-in method.";
     case "auth/popup-closed-by-user":
@@ -51,6 +60,7 @@ export default function AuthCard() {
   const router = useRouter();
   const [showGlow, setShowGlow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("signIn");
   const [authAction, setAuthAction] = useState<AuthAction>(null);
   const [emailFocus, setEmailFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
@@ -61,6 +71,7 @@ export default function AuthCard() {
   const [authMessageType, setAuthMessageType] = useState<"error" | "success">("error");
   const [hoveredSocialIndex, setHoveredSocialIndex] = useState<number | null>(null);
   const isLoading = authAction !== null;
+  const isSignUp = authMode === "signUp";
 
   useEffect(() => {
     // The purple arc takes ~5.8s to hit the card. Trigger the edge glow exactly then!
@@ -89,7 +100,11 @@ export default function AuthCard() {
 
     try {
       const firebaseAuth = await prepareAuth();
-      await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      } else {
+        await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      }
       completeSignIn();
     } catch (error) {
       setAuthMessageType("error");
@@ -97,6 +112,12 @@ export default function AuthCard() {
     } finally {
       setAuthAction(null);
     }
+  };
+
+  const toggleAuthMode = () => {
+    setAuthMode((currentMode) => (currentMode === "signIn" ? "signUp" : "signIn"));
+    setAuthMessage("");
+    setAuthMessageType("error");
   };
 
   const handleSocialSignIn = async (providerName: "github" | "google") => {
@@ -195,8 +216,14 @@ export default function AuthCard() {
         </div>
 
         <motion.div custom={1} initial="hidden" animate="visible" variants={staggerVariants} className="text-center mb-8">
-          <h2 className="text-2xl font-medium text-white mb-2 tracking-tight">Welcome Back</h2>
-          <p className="text-[#888888] text-sm">Sign in to continue forging your career.</p>
+          <h2 className="text-2xl font-medium text-white mb-2 tracking-tight">
+            {isSignUp ? "Create Account" : "Welcome Back"}
+          </h2>
+          <p className="text-[#888888] text-sm">
+            {isSignUp
+              ? "Add your email and password to start forging."
+              : "Sign in to continue forging your career."}
+          </p>
         </motion.div>
 
         {/* Premium Social Buttons - Navbar Style */}
@@ -302,6 +329,7 @@ export default function AuthCard() {
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => setEmailFocus(true)}
                 onBlur={() => setEmailFocus(false)}
+                autoComplete="email"
                 className="w-full bg-transparent border-none text-[#999999] px-4 h-full outline-none peer placeholder-transparent"
                 style={{ transition: "background-color 99999s ease-in-out 0s", WebkitTextFillColor: "#999999" }}
                 id="email"
@@ -326,10 +354,12 @@ export default function AuthCard() {
               <input
                 type={showPassword ? "text" : "password"}
                 required
+                minLength={isSignUp ? 6 : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onFocus={() => setPasswordFocus(true)}
                 onBlur={() => setPasswordFocus(false)}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 className="w-full bg-transparent border-none text-[#999999] pl-4 pr-12 h-full outline-none peer placeholder-transparent"
                 style={{ transition: "background-color 99999s ease-in-out 0s", WebkitTextFillColor: "#999999" }}
                 id="password"
@@ -347,6 +377,7 @@ export default function AuthCard() {
               {/* Premium Reveal Button */}
               <button
                 type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-[#666] hover:text-white transition-colors"
               >
@@ -386,14 +417,16 @@ export default function AuthCard() {
               </div>
               <span className="text-sm text-[#888] group-hover:text-[#aaa] transition-colors">Remember me</span>
             </label>
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={handlePasswordReset}
-              className="text-sm text-violet-400 hover:text-violet-300 transition-colors disabled:opacity-60"
-            >
-              {authAction === "reset" ? "Sending..." : "Forgot password?"}
-            </button>
+            {!isSignUp && (
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={handlePasswordReset}
+                className="text-sm text-violet-400 hover:text-violet-300 transition-colors disabled:opacity-60"
+              >
+                {authAction === "reset" ? "Sending..." : "Forgot password?"}
+              </button>
+            )}
           </motion.div>
 
           {/* Main CTA */}
@@ -417,7 +450,7 @@ export default function AuthCard() {
                   {authAction === "password" ? (
                     <Loader2 className="w-5 h-5 animate-spin text-white/80" />
                   ) : (
-                    "Sign In"
+                    isSignUp ? "Create Account" : "Sign In"
                   )}
                 </span>
               </button>
@@ -426,8 +459,17 @@ export default function AuthCard() {
         </form>
 
         <motion.div custom={8} initial="hidden" animate="visible" variants={staggerVariants} className="mt-8 text-center">
-          <span className="text-[#666] text-sm">Don&apos;t have an account? </span>
-          <a href="#" className="text-white text-sm font-medium hover:text-violet-400 transition-colors">Request Access</a>
+          <span className="text-[#666] text-sm">
+            {isSignUp ? "Already have an account? " : "Don't have an account? "}
+          </span>
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={toggleAuthMode}
+            className="text-white text-sm font-medium hover:text-violet-400 transition-colors disabled:opacity-60"
+          >
+            {isSignUp ? "Sign In" : "Create Account"}
+          </button>
         </motion.div>
 
       </div>

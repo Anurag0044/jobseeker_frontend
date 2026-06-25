@@ -1,4 +1,5 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 import {
   GithubAuthProvider,
   GoogleAuthProvider,
@@ -16,6 +17,7 @@ const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
+export const firebaseProjectId = firebaseConfig.projectId;
 
 export const firebaseApp = isFirebaseConfigured
   ? getApps().length
@@ -24,6 +26,7 @@ export const firebaseApp = isFirebaseConfigured
   : null;
 
 export const auth = firebaseApp ? getAuth(firebaseApp) : null;
+export const db = firebaseApp ? getFirestore(firebaseApp) : null;
 
 export function requireFirebaseAuth(): Auth {
   if (!auth) {

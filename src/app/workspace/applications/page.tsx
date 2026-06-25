@@ -4,8 +4,10 @@ import React, { useState } from "react";
 import { motion, Variants } from "framer-motion";
 import {
   Plus, Download, ChevronRight, MapPin, DollarSign,
-  FileText, Clock, Sparkles, ArrowRight, CheckCircle2
+  FileText, Sparkles, ArrowRight, CheckCircle2
 } from "lucide-react";
+import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -29,8 +31,10 @@ const applications = [
 export default function ApplicationsPage() {
   const [activeTab, setActiveTab] = useState("All Applications");
   const [selected, setSelected] = useState(0);
+  const { displayProfile } = useForgeProfile();
   const tabs = ["All Applications", "Applied", "Interview", "Offer", "Archived"];
   const app = applications[selected];
+  const strongestSkill = displayProfile?.skills?.[0] || displayProfile?.techStack?.[0] || "system design";
 
   return (
     <div className="px-8 pb-16 pt-8">
@@ -44,7 +48,7 @@ export default function ApplicationsPage() {
         <motion.div variants={itemVariants} className="flex items-start justify-between">
           <div>
             <h1 className="text-[28px] font-semibold text-white tracking-tight mb-1">Applications</h1>
-            <p className="text-[14px] text-[#a1a1aa]">Manage opportunities, interviews, and career progress.</p>
+            <p className="text-[14px] text-[#a1a1aa]">Manage opportunities, interviews, and career progress for @{displayProfile?.username || "your profile"}.</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-[#121212] border border-[#262626] text-white text-[13px] font-medium rounded-lg hover:bg-[#1A1A1A] transition-colors">
@@ -55,6 +59,8 @@ export default function ApplicationsPage() {
             </button>
           </div>
         </motion.div>
+
+        <ProfileContextStrip label="Application Context" />
 
         {/* Tabs */}
         <motion.div variants={itemVariants} className="border-b border-[#1e1e1e] flex gap-6">
@@ -186,7 +192,7 @@ export default function ApplicationsPage() {
               <div className="flex-1">
                 <h4 className="text-[13px] font-semibold text-white mb-1">Forge AI Suggestion</h4>
                 <p className="text-[12px] text-[#a1a1aa] leading-relaxed">
-                  Your portfolio aligns strongly with this role. Consider highlighting your system design projects and performance optimization work before the interview.
+                  Your portfolio aligns strongly with this role. Consider highlighting your {strongestSkill} work and the stack from your live profile before the interview.
                 </p>
               </div>
               <button className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-[#b19cd9] font-medium hover:text-[#c2c1ff] transition-colors whitespace-nowrap">

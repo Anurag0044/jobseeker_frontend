@@ -5,8 +5,10 @@ import { motion, Variants } from "framer-motion";
 import {
   GraduationCap, Briefcase, Code2, Users, UserCircle, Building2, Plus,
   Search, ChevronDown, Bookmark, MoreHorizontal, Calendar, 
-  Share, FileText, LayoutTemplate, Activity, ArrowRight
+  LayoutTemplate, Activity, ArrowRight
 } from "lucide-react";
+import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -20,6 +22,9 @@ const itemVariants: Variants = {
 
 export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState("Overview");
+  const { displayProfile } = useForgeProfile();
+  const techStack = displayProfile?.techStack?.length ? displayProfile.techStack : ["React", "TypeScript", "Next.js", "Tailwind CSS"];
+  const firstSkill = displayProfile?.skills?.[0] || techStack[0] || "technology";
 
   return (
     <div className="px-8 pb-16 pt-8 overflow-x-hidden">
@@ -33,7 +38,7 @@ export default function CommunitiesPage() {
         <motion.div variants={itemVariants} className="flex items-start justify-between">
           <div>
             <h1 className="text-[26px] font-semibold text-white tracking-tight mb-1">Communities</h1>
-            <p className="text-[13px] text-[#a1a1aa]">Connect with professionals, students, recruiters, and builders who share your goals.</p>
+            <p className="text-[13px] text-[#a1a1aa]">Connect with professionals, students, recruiters, and builders around {firstSkill} and your career goals.</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-[#121212] border border-[#262626] text-white text-[13px] font-medium rounded-lg hover:bg-[#1A1A1A] transition-colors">
@@ -44,6 +49,8 @@ export default function CommunitiesPage() {
             </button>
           </div>
         </motion.div>
+
+        <ProfileContextStrip label="Community Discovery Context" />
 
         {/* Categories Carousel */}
         <motion.div variants={itemVariants} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
@@ -94,7 +101,7 @@ export default function CommunitiesPage() {
                 logo={<ReactLogo />}
                 title="Frontend Engineers"
                 desc="UI engineering discussions, career advice, and project showcases."
-                tags={["React", "TypeScript", "Next.js", "Tailwind CSS"]}
+                tags={techStack.slice(0, 4)}
                 members="12.6K Members • Active now"
                 user="Sarah Chen"
                 userInitials="SC"
@@ -276,7 +283,7 @@ export default function CommunitiesPage() {
 
 /* ─── Helpers ────────────────────────────────────────────── */
 
-function CategoryCard({ icon, title, desc, count }: any) {
+function CategoryCard({ icon, title, desc, count }: { icon: React.ReactNode; title: string; desc: string; count: string }) {
   return (
     <div className="min-w-[240px] p-5 bg-[#121212] border border-[#1e1e1e] hover:border-[#3f3f46] transition-colors rounded-xl flex flex-col shrink-0 cursor-pointer">
       <div className="w-8 h-8 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-[#262626] mb-3">
@@ -289,7 +296,20 @@ function CategoryCard({ icon, title, desc, count }: any) {
   );
 }
 
-function CommunityListItem({ active, logo, title, desc, tags, members, user, userInitials, userAction, time }: any) {
+interface CommunityListItemProps {
+  active?: boolean;
+  logo: React.ReactNode;
+  title: string;
+  desc: string;
+  tags: string[];
+  members: string;
+  user: string;
+  userInitials: string;
+  userAction: string;
+  time: string;
+}
+
+function CommunityListItem({ active, logo, title, desc, tags, members, user, userInitials, userAction, time }: CommunityListItemProps) {
   return (
     <div className={`flex flex-col md:flex-row md:items-start gap-4 p-5 rounded-xl transition-all border ${active ? "bg-[#1e1a2e]/30 border-[#2a2440]" : "bg-[#121212] border-[#1e1e1e] hover:border-[#3f3f46]"}`}>
       <div className="flex-1 flex gap-4 min-w-0">
@@ -335,7 +355,7 @@ function CommunityListItem({ active, logo, title, desc, tags, members, user, use
   );
 }
 
-function DiscussionItem({ title, author, replies, time }: any) {
+function DiscussionItem({ title, author, replies, time }: { title: string; author: string; replies: string; time: string }) {
   return (
     <div className="flex flex-col">
       <span className="text-[12px] font-medium text-white hover:text-[#c2c1ff] cursor-pointer transition-colors mb-0.5">{title}</span>
@@ -344,7 +364,7 @@ function DiscussionItem({ title, author, replies, time }: any) {
   );
 }
 
-function ProjectItem({ title, desc, icon }: any) {
+function ProjectItem({ title, desc, icon }: { title: string; desc: string; icon: React.ReactNode }) {
   return (
     <div className="flex gap-3 items-center p-2 rounded-lg hover:bg-[#1A1A1A] transition-colors cursor-pointer border border-transparent hover:border-[#262626]">
       <div className="w-8 h-8 rounded bg-[#121212] border border-[#262626] flex items-center justify-center shrink-0">
@@ -358,7 +378,7 @@ function ProjectItem({ title, desc, icon }: any) {
   );
 }
 
-function EventItem({ title, date }: any) {
+function EventItem({ title, date }: { title: string; date: string }) {
   return (
     <div className="flex gap-3 items-start p-2 rounded-lg hover:bg-[#1A1A1A] transition-colors cursor-pointer border border-transparent hover:border-[#262626]">
       <Calendar size={14} className="text-[#a1a1aa] mt-0.5 shrink-0" />

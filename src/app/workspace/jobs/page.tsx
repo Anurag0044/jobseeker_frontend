@@ -4,9 +4,11 @@ import React, { useState } from "react";
 import { motion, Variants } from "framer-motion";
 import {
   Search, SlidersHorizontal, Bookmark, ArrowLeft,
-  Share, MoreHorizontal, MapPin, DollarSign, Calendar,
-  CheckCircle2, ChevronRight, Check
+  Share, MoreHorizontal, DollarSign, Calendar,
+  ChevronRight, Check
 } from "lucide-react";
+import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
+import { useForgeProfile } from "../../../hooks/useForgeProfile";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -20,6 +22,9 @@ const itemVariants: Variants = {
 
 export default function JobsPage() {
   const [activeTab, setActiveTab] = useState("Overview");
+  const { displayProfile } = useForgeProfile();
+  const profileStack = displayProfile?.techStack?.length ? displayProfile.techStack.slice(0, 4) : ["React", "TypeScript", "Next.js", "Tailwind CSS"];
+  const firstName = displayProfile?.displayName?.split(" ")[0] || "your";
   
   return (
     <div className="px-8 pb-16 pt-8">
@@ -36,7 +41,7 @@ export default function JobsPage() {
           <motion.div variants={itemVariants} className="flex items-start justify-between">
             <div>
               <h1 className="text-[26px] font-semibold text-white tracking-tight mb-1">Opportunities</h1>
-              <p className="text-[13px] text-[#a1a1aa]">Discover roles aligned with your projects, skills, and career goals.</p>
+              <p className="text-[13px] text-[#a1a1aa]">Discover roles aligned with {firstName === "your" ? "your" : `${firstName}'s`} projects, skills, and career goals.</p>
             </div>
             <div className="flex items-center gap-3">
               <button className="flex items-center gap-2 px-3 py-1.5 bg-[#121212] border border-[#262626] text-white text-[12px] font-medium rounded-lg hover:bg-[#1A1A1A] transition-colors">
@@ -50,6 +55,8 @@ export default function JobsPage() {
               </button>
             </div>
           </motion.div>
+
+          <ProfileContextStrip label="Job Recommendation Context" />
 
           {/* Featured Opportunity */}
           <motion.div variants={itemVariants} className="bg-[#0A0A0A] border border-[#1e1e1e] rounded-xl p-6 relative overflow-hidden">
@@ -90,7 +97,7 @@ export default function JobsPage() {
                     This role aligns strongly with your frontend projects and recent portfolio activity.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {["React", "TypeScript", "Next.js", "Tailwind CSS"].map(tag => (
+                    {profileStack.map(tag => (
                       <span key={tag} className="px-2 py-0.5 bg-[#1A1A1A] border border-[#262626] text-[#a1a1aa] text-[10px] rounded">{tag}</span>
                     ))}
                   </div>
@@ -324,7 +331,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function JobCard({ company, logo, bg, role, loc, tags, date }: any) {
+interface JobCardProps {
+  company: string;
+  logo: React.ReactNode;
+  bg: string;
+  role: string;
+  loc: string;
+  tags: string[];
+  date: string;
+}
+
+function JobCard({ company, logo, bg, role, loc, tags, date }: JobCardProps) {
   return (
     <div className="bg-[#121212] border border-[#1e1e1e] hover:border-[#3f3f46] transition-colors rounded-xl p-4 flex flex-col group cursor-pointer">
       <div className="flex items-start gap-3 mb-3">
