@@ -7,11 +7,11 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
   where,
+  type Timestamp,
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../lib/firebase";
@@ -44,8 +44,8 @@ export interface FirestoreProject {
     figma: string;
     custom: CustomLink[];
   };
-  createdAt?: unknown;
-  updatedAt?: unknown;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export type FirestoreProjectInput = Omit<
@@ -58,6 +58,15 @@ function getFirebaseMessage(error: unknown): string {
     return "Firestore rejected the projects request. Make sure the projects collection rules are deployed.";
   }
   return error instanceof Error ? error.message : "Unable to manage projects.";
+}
+
+/** Sort projects newest-first using the Firestore Timestamp, falling back to doc position. */
+function sortByNewest(projects: FirestoreProject[]): FirestoreProject[] {
+  return [...projects].sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? 0;
+    const tb = b.createdAt?.toMillis?.() ?? 0;
+    return tb - ta;
+  });
 }
 
 export function useFirestoreProjects(ownerUid?: string) {
@@ -78,18 +87,20 @@ export function useFirestoreProjects(ownerUid?: string) {
       return;
     }
 
+    // NOTE: No orderBy here — avoids needing a composite Firestore index.
+    // Sorting is done client-side after the snapshot arrives.
     const q = query(
       collection(db, "projects"),
-      where("ownerUid", "==", targetUid),
-      orderBy("createdAt", "desc")
+      where("ownerUid", "==", targetUid)
     );
 
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setProjects(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() } as FirestoreProject))
+        const raw = snap.docs.map(
+          (d) => ({ id: d.id, ...d.data() } as FirestoreProject)
         );
+        setProjects(sortByNewest(raw));
         setLoading(false);
         setError("");
       },
@@ -126,10 +137,17 @@ export function useFirestoreProjects(ownerUid?: string) {
 
   /** Update an existing project. Optionally re-upload cover. */
   const updateProject = useCallback(
-    async (id: string, input: Partial<FirestoreProjectInput>, newCoverFile?: File) => {
+    async (
+      id: string,
+      input: Partial<FirestoreProjectInput>,
+      newCoverFile?: File
+    ) => {
       if (!user || !db) throw new Error("Not authenticated.");
 
-      let patch: Record<string, unknown> = { ...input, updatedAt: serverTimestamp() };
+      const patch: Record<string, unknown> = {
+        ...input,
+        updatedAt: serverTimestamp(),
+      };
       if (newCoverFile) {
         const res = await uploadImageToCloudinary(newCoverFile, "forgex/projects");
         patch.coverUrl = res.secure_url;

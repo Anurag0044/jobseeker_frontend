@@ -3,16 +3,18 @@
 import { FirebaseError } from "firebase/app";
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
+  collectionGroup,
+  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
   updateDoc,
-  deleteDoc,
   increment,
   where,
 } from "firebase/firestore";
@@ -38,7 +40,7 @@ export interface CommunityMember {
   uid: string;
   displayName: string;
   photoURL: string;
-  role: "owner" | "member";
+  role: "owner" | "admin" | "member";
   joinedAt?: unknown;
 }
 
@@ -61,12 +63,14 @@ export function useCommunity() {
   const { user, loading: authLoading } = useUser();
 
   const [communities, setCommunities] = useState<Community[]>([]);
+  // joinedIds is loaded from Firestore (user doc) so it persists across refreshes
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [membershipLoaded, setMembershipLoaded] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  // Subscribe to all public communities
+  // Subscribe to all communities (no orderBy — avoids composite index requirement)
   useEffect(() => {
     if (authLoading) return;
     if (!db) {
@@ -74,11 +78,18 @@ export function useCommunity() {
       return;
     }
 
-    const q = query(collection(db, "communities"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "communities"));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setCommunities(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Community)));
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Community));
+        // Sort newest-first client-side
+        list.sort((a, b) => {
+          const ta = (a.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          const tb = (b.createdAt as { toMillis?: () => number })?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+        setCommunities(list);
         setLoading(false);
         setError("");
       },
@@ -90,50 +101,28 @@ export function useCommunity() {
     return unsub;
   }, [authLoading]);
 
-  // Track which communities the current user has joined
+  // Persist membership: subscribe to user doc's `joinedCommunities` array
   useEffect(() => {
     if (authLoading || !user || !db) {
       setJoinedIds(new Set());
+      setMembershipLoaded(!authLoading);
       return;
     }
 
-    // We can't do a collection-group query without an index, so we poll joined
-    // communities by checking /communities/{id}/members/{uid} existence.
-    // Instead, use a simpler approach: store a `joinedCommunities` array on the user doc,
-    // or just check membership per community. Here we keep a snapshot per community
-    // the user might belong to by listening to all communities and checking member docs.
-    // For scalability: subscribe to communities the user is part of via a denormalized field.
-    // We use a simple "memberOf" subcollection query pattern:
-    // We query all communities where the members sub-doc for this uid exists.
-    // Since Firestore doesn't support sub-collection existence queries directly,
-    // we maintain a `members` array in the community doc for query purposes.
-    // However, to avoid complexity, we track membership by storing community IDs
-    // on the user profile. Instead, let's keep it simple: after fetching communities,
-    // we check membership for each one the user interacts with.
-    // For the UI we maintain a local Set that is updated when join/leave actions occur.
-    setJoinedIds(new Set());
+    const userRef = doc(db, "users", user.uid);
+    const unsub = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as { joinedCommunities?: string[] };
+        setJoinedIds(new Set(data.joinedCommunities || []));
+      } else {
+        setJoinedIds(new Set());
+      }
+      setMembershipLoaded(true);
+    });
+    return unsub;
   }, [authLoading, user]);
 
-  // Check if user is member of a specific community
-  const checkMembership = useCallback(
-    async (communityId: string): Promise<boolean> => {
-      if (!user || !db) return false;
-      try {
-        const snap = await getDocs(
-          query(
-            collection(db, "communities", communityId, "members"),
-            where("uid", "==", user.uid)
-          )
-        );
-        return !snap.empty;
-      } catch {
-        return false;
-      }
-    },
-    [user]
-  );
-
-  /** Create a new community */
+  /** Create a new community — creator becomes admin/owner */
   const createCommunity = useCallback(
     async (input: CreateCommunityInput) => {
       if (!user || !db) throw new Error("Not authenticated.");
@@ -157,7 +146,7 @@ export function useCommunity() {
           updatedAt: serverTimestamp(),
         });
 
-        // Add creator as owner member
+        // Write creator as owner member
         await setDoc(
           doc(db, "communities", communityRef.id, "members", user.uid),
           {
@@ -169,7 +158,11 @@ export function useCommunity() {
           }
         );
 
-        setJoinedIds((prev) => new Set([...prev, communityRef.id]));
+        // Persist membership in user doc
+        await updateDoc(doc(db, "users", user.uid), {
+          joinedCommunities: arrayUnion(communityRef.id),
+        });
+
         setError("");
         return communityRef.id;
       } catch (err) {
@@ -183,7 +176,7 @@ export function useCommunity() {
     [user]
   );
 
-  /** Join a community */
+  /** Join a community — persisted to Firestore */
   const joinCommunity = useCallback(
     async (communityId: string) => {
       if (!user || !db) throw new Error("Not authenticated.");
@@ -199,12 +192,14 @@ export function useCommunity() {
             joinedAt: serverTimestamp(),
           }
         );
-        // Increment member count
         await updateDoc(doc(db, "communities", communityId), {
           memberCount: increment(1),
           updatedAt: serverTimestamp(),
         });
-        setJoinedIds((prev) => new Set([...prev, communityId]));
+        // Persist in user doc so membership survives page refreshes
+        await updateDoc(doc(db, "users", user.uid), {
+          joinedCommunities: arrayUnion(communityId),
+        });
         setError("");
       } catch (err) {
         setError(getFirebaseMessage(err));
@@ -226,14 +221,61 @@ export function useCommunity() {
           memberCount: increment(-1),
           updatedAt: serverTimestamp(),
         });
-        setJoinedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(communityId);
-          return next;
+        // Remove from user doc
+        await updateDoc(doc(db, "users", user.uid), {
+          joinedCommunities: arrayRemove(communityId),
         });
         setError("");
       } catch (err) {
         setError(getFirebaseMessage(err));
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [user]
+  );
+
+  /**
+   * Delete a community (admin/owner only).
+   * Removes: members subcollection, messages subcollection, community doc, user membership records.
+   */
+  const deleteCommunity = useCallback(
+    async (communityId: string) => {
+      if (!user || !db) throw new Error("Not authenticated.");
+      setActionLoading(communityId + "_delete");
+      try {
+        // Delete all messages
+        const messagesSnap = await getDocs(
+          collection(db, "communities", communityId, "messages")
+        );
+        await Promise.all(messagesSnap.docs.map((d) => deleteDoc(d.ref)));
+
+        // Delete all members (and clean up their user docs)
+        const membersSnap = await getDocs(
+          collection(db, "communities", communityId, "members")
+        );
+        await Promise.all(
+          membersSnap.docs.map(async (d) => {
+            const memberId = d.id;
+            await deleteDoc(d.ref);
+            // Remove from member's user doc
+            try {
+              await updateDoc(doc(db, "users", memberId), {
+                joinedCommunities: arrayRemove(communityId),
+              });
+            } catch {
+              // Non-blocking — user doc may not exist
+            }
+          })
+        );
+
+        // Delete the community document itself
+        await deleteDoc(doc(db, "communities", communityId));
+        setError("");
+      } catch (err) {
+        const msg = getFirebaseMessage(err);
+        setError(msg);
+        throw new Error(msg);
       } finally {
         setActionLoading(null);
       }
@@ -264,6 +306,10 @@ export function useCommunity() {
           memberCount: increment(1),
           updatedAt: serverTimestamp(),
         });
+        // Persist in invited user's doc
+        await updateDoc(doc(db, "users", targetUid), {
+          joinedCommunities: arrayUnion(communityId),
+        });
         setError("");
       } catch (err) {
         setError(getFirebaseMessage(err));
@@ -276,13 +322,14 @@ export function useCommunity() {
     user,
     communities,
     joinedIds,
+    membershipLoaded,
     loading: authLoading || loading,
     actionLoading,
     error,
-    checkMembership,
     createCommunity,
     joinCommunity,
     leaveCommunity,
+    deleteCommunity,
     inviteMember,
   };
 }

@@ -205,7 +205,7 @@ export default function MessagesPage() {
         </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="flex-1 flex flex-col bg-[#0A0A0A]">
+      <motion.div variants={itemVariants} className="flex-1 flex flex-col bg-[#0A0A0A] min-w-0">
         {selectedUser ? (
           <>
             <div className="h-16 flex items-center justify-between px-6 border-b border-[#1e1e1e] shrink-0">
@@ -232,11 +232,11 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar flex flex-col gap-4 relative min-w-0">
               {messages.length === 0 ? (
-                <div className="m-auto max-w-sm text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
                   <p className="text-[14px] font-medium text-white mb-1">No messages yet</p>
-                  <p className="text-[12px] text-[#71717a]">Send the first message to create a realtime Firestore chat.</p>
+                  <p className="text-[12px] text-[#71717a] max-w-[200px]">Send the first message to create a realtime Firestore chat.</p>
                 </div>
               ) : (
                 messages.map((message) => {

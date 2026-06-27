@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import {
-  FolderGit2, ExternalLink, Globe, Github, Link as LinkIcon,
+  FolderGit2, ExternalLink, Globe, GitBranch, Link as LinkIcon,
   Loader2, Users
 } from "lucide-react";
 import { useFirestoreProjects, type FirestoreProject } from "../../../hooks/useFirestoreProjects";
@@ -38,7 +38,6 @@ function ProjectViewCard({ project }: { project: FirestoreProject }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-        {/* Quick link buttons on hover */}
         <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           {project.links?.demo && (
             <a href={project.links.demo} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-110 transition-transform shadow-lg" title="Live Demo">
@@ -61,7 +60,6 @@ function ProjectViewCard({ project }: { project: FirestoreProject }) {
           <p className="text-[13px] text-[#a1a1aa] line-clamp-2 leading-relaxed">{project.description}</p>
         </div>
 
-        {/* Tags */}
         {project.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {project.tags.slice(0, 4).map((tag) => (
@@ -71,11 +69,10 @@ function ProjectViewCard({ project }: { project: FirestoreProject }) {
           </div>
         )}
 
-        {/* Links */}
-        <div className="flex flex-wrap gap-2 mt-auto pt-2 border-t border-white/[0.05]">
+        <div className="flex flex-wrap gap-3 mt-auto pt-2 border-t border-white/[0.05]">
           {project.links?.github && (
             <a href={project.links.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-[#a1a1aa] hover:text-white transition-colors">
-              <Github size={12} /> GitHub
+              <GitBranch size={12} /> GitHub
             </a>
           )}
           {project.links?.demo && (
@@ -94,14 +91,13 @@ function ProjectViewCard({ project }: { project: FirestoreProject }) {
   );
 }
 
-export default function PortfolioPage() {
+function PortfolioInner() {
   const searchParams = useSearchParams();
   const uid = searchParams.get("uid");
 
   const { projects, loading, error } = useFirestoreProjects(uid || undefined);
   const [targetProfile, setTargetProfile] = useState<ProfileBasic | null>(null);
 
-  // Fetch target user's basic profile if uid is provided
   useEffect(() => {
     if (!uid || !db) return;
     getDoc(doc(db, "users", uid)).then((snap) => {
@@ -117,7 +113,6 @@ export default function PortfolioPage() {
     });
   }, [uid]);
 
-  // Only show published projects for public profiles
   const visibleProjects = uid
     ? projects.filter((p) => p.status === "Published")
     : projects;
@@ -130,7 +125,6 @@ export default function PortfolioPage() {
         transition={{ duration: 0.4 }}
         className="max-w-[1100px] mx-auto flex flex-col gap-8"
       >
-        {/* Header */}
         {uid && targetProfile ? (
           <div className="flex items-start gap-5">
             <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 bg-[#121212] shrink-0 flex items-center justify-center text-[20px] font-bold text-[#b19cd9]">
@@ -155,21 +149,16 @@ export default function PortfolioPage() {
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={28} className="text-[#71717a] animate-spin" />
           </div>
         )}
 
-        {/* Error */}
         {error && !loading && (
-          <div className="text-[13px] text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-            {error}
-          </div>
+          <div className="text-[13px] text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</div>
         )}
 
-        {/* Empty state */}
         {!loading && !error && visibleProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 bg-[#121212] border border-[#1e1e1e] rounded-xl">
             <div className="w-16 h-16 rounded-2xl bg-[#1e1a2e] border border-[#2a2440] flex items-center justify-center mb-6">
@@ -177,12 +166,11 @@ export default function PortfolioPage() {
             </div>
             <h2 className="text-[18px] font-semibold text-white mb-2">No Projects Yet</h2>
             <p className="text-[13px] text-[#a1a1aa] text-center max-w-sm">
-              {uid ? "This user hasn't published any projects yet." : "You haven't added any projects. Create your first project from the Projects section."}
+              {uid ? "This user hasn't published any projects yet." : "Create your first project from the Projects section."}
             </p>
           </div>
         )}
 
-        {/* Projects Grid */}
         {!loading && !error && visibleProjects.length > 0 && (
           <>
             <div className="flex items-center justify-between">
@@ -204,5 +192,17 @@ export default function PortfolioPage() {
         )}
       </motion.div>
     </div>
+  );
+}
+
+export default function PortfolioPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={28} className="text-[#71717a] animate-spin" />
+      </div>
+    }>
+      <PortfolioInner />
+    </Suspense>
   );
 }

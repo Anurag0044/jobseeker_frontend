@@ -1,351 +1,423 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  GraduationCap, Briefcase, Code2, Users, UserCircle, Building2, Plus,
-  Search, ChevronDown, Bookmark, MoreHorizontal, Calendar,
-  LayoutTemplate, Activity, ArrowRight, Loader2, MessageCircle,
-  LogOut, UserPlus
+  Plus, Users, UserPlus, LogOut, Trash2, MoreHorizontal,
+  MessageCircle, Info, User, Loader2, X, Globe, Lock,
+  ChevronRight, Hash, Settings
 } from "lucide-react";
-import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
-import { useForgeProfile } from "../../../hooks/useForgeProfile";
 import { useCommunity, type Community } from "../../../hooks/useCommunity";
 import CreateCommunityModal from "../../../components/communities/CreateCommunityModal";
 import CommunityChat from "../../../components/communities/CommunityChat";
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.05 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { y: 15, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
-};
-
 export default function CommunitiesPage() {
-  const [activeTab, setActiveTab] = useState("Chat");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
-  const [membershipMap, setMembershipMap] = useState<Record<string, boolean>>({});
-
-  const { displayProfile } = useForgeProfile();
   const {
-    user, communities, joinedIds, loading, actionLoading, error,
-    checkMembership, joinCommunity, leaveCommunity,
+    user, communities, joinedIds, membershipLoaded, loading,
+    actionLoading, error,
+    joinCommunity, leaveCommunity, deleteCommunity,
   } = useCommunity();
 
-  const techStack = displayProfile?.techStack?.length ? displayProfile.techStack : ["React", "TypeScript", "Next.js", "Tailwind CSS"];
-  const firstSkill = displayProfile?.skills?.[0] || techStack[0] || "technology";
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "overview" | "members">("chat");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Check membership for selected community
+  const selected = communities.find((c) => c.id === selectedId) ?? null;
+  const isMember = selectedId ? joinedIds.has(selectedId) : false;
+  const isOwner = selected ? selected.ownerUid === user?.uid : false;
+
+  // Auto-select first joined community on load
   useEffect(() => {
-    if (!selectedCommunityId || !user) return;
-    if (membershipMap[selectedCommunityId] !== undefined) return;
-    checkMembership(selectedCommunityId).then((isMember) => {
-      setMembershipMap((prev) => ({ ...prev, [selectedCommunityId]: isMember }));
-    });
-  }, [selectedCommunityId, user, checkMembership, membershipMap]);
+    if (!membershipLoaded || selectedId) return;
+    const first = communities.find((c) => joinedIds.has(c.id));
+    if (first) setSelectedId(first.id);
+  }, [membershipLoaded, communities, joinedIds, selectedId]);
 
-  // Also track joined communities from the hook
-  useEffect(() => {
-    if (!joinedIds.size) return;
-    const updates: Record<string, boolean> = {};
-    joinedIds.forEach((id) => { updates[id] = true; });
-    setMembershipMap((prev) => ({ ...prev, ...updates }));
-  }, [joinedIds]);
-
-  const selectedCommunity = communities.find((c) => c.id === selectedCommunityId) || null;
-  const isMember = selectedCommunityId ? (membershipMap[selectedCommunityId] || joinedIds.has(selectedCommunityId)) : false;
-
-  const handleJoin = async (communityId: string) => {
-    await joinCommunity(communityId);
-    setMembershipMap((prev) => ({ ...prev, [communityId]: true }));
-    setActiveTab("Chat");
+  // When selecting a community, set default tab
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    setActiveTab(joinedIds.has(id) ? "chat" : "overview");
   };
 
-  const handleLeave = async (communityId: string) => {
-    await leaveCommunity(communityId);
-    setMembershipMap((prev) => ({ ...prev, [communityId]: false }));
+  const handleJoin = async (id: string) => {
+    await joinCommunity(id);
+    setSelectedId(id);
+    setActiveTab("chat");
   };
 
-  const TABS = isMember ? ["Chat", "Overview", "Members"] : ["Overview"];
+  const handleLeave = async (id: string) => {
+    await leaveCommunity(id);
+    setActiveTab("overview");
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true);
+    try {
+      await deleteCommunity(id);
+      if (selectedId === id) setSelectedId(null);
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteId(null);
+    }
+  };
+
+  const joinedCommunities = communities.filter((c) => joinedIds.has(c.id));
+  const discoverCommunities = communities.filter((c) => !joinedIds.has(c.id));
 
   return (
-    <div className="px-8 pb-16 pt-8 overflow-x-hidden">
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-[1200px] mx-auto flex flex-col gap-8">
+    <div className="flex h-full overflow-hidden">
+      {/* ── Left Sidebar ─────────────────────────────── */}
+      <div className="w-64 shrink-0 flex flex-col border-r border-[#1e1e1e] bg-[#080808] overflow-y-auto custom-scrollbar">
         {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-start justify-between">
-          <div>
-            <h1 className="text-[26px] font-semibold text-white tracking-tight mb-1">Communities</h1>
-            <p className="text-[13px] text-[#a1a1aa]">Connect with professionals, students, recruiters, and builders around {firstSkill} and your career goals.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#121212] border border-[#262626] text-white text-[13px] font-medium rounded-lg hover:bg-[#1A1A1A] transition-colors">
-              <Search size={16} /> Explore Communities
-            </button>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[13px] font-medium rounded-lg transition-colors"
-            >
-              <Plus size={16} /> Create Community
-            </button>
-          </div>
-        </motion.div>
+        <div className="p-4 border-b border-[#1e1e1e] flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-white">Communities</span>
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="w-7 h-7 rounded-full bg-[#5e5ce6] hover:bg-[#4d4ad5] flex items-center justify-center text-white transition-colors"
+            title="Create Community"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
 
-        <ProfileContextStrip label="Community Discovery Context" />
-
-        {/* Categories Carousel */}
-        <motion.div variants={itemVariants} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-          <CategoryCard icon={<GraduationCap size={18} className="text-[#b19cd9]" />} title="Students" desc="Connect with students building skills, projects, and future careers." count="12.4K Members" />
-          <CategoryCard icon={<Briefcase size={18} className="text-[#61dafb]" />} title="Employees" desc="Learn from professionals actively working across industries." count="25.8K Members" />
-          <CategoryCard icon={<Code2 size={18} className="text-[#a3e635]" />} title="Senior Developers" desc="Explore advanced engineering discussions and practical experience." count="18.7K Members" />
-          <CategoryCard icon={<Users size={18} className="text-[#22c55e]" />} title="Collaborators" desc="Find people to build meaningful projects together." count="10.3K Members" />
-          <CategoryCard icon={<UserCircle size={18} className="text-[#f59e0b]" />} title="Recruiters" desc="Understand hiring expectations and connect with recruiters." count="6.2K Members" />
-          <CategoryCard icon={<Building2 size={18} className="text-[#3b82f6]" />} title="Companies" desc="Explore organizations actively hiring and sharing opportunities." count="4.1K Members" />
-          <div className="min-w-[240px] p-5 bg-gradient-to-b from-[#1e1a2e] to-[#0A0A0A] border border-[#2a2440] rounded-xl flex flex-col shrink-0">
-            <div className="w-8 h-8 rounded-full bg-[#5e5ce6]/20 flex items-center justify-center border border-[#5e5ce6]/40 mb-3">
-              <Plus size={16} className="text-[#c2c1ff]" />
-            </div>
-            <h3 className="text-[14px] font-semibold text-white mb-2">Create Your Own Community</h3>
-            <p className="text-[11px] text-[#a1a1aa] mb-4 flex-1">Build a professional space around a niche skill, technology, industry, or mission.</p>
-            <button onClick={() => setIsCreateOpen(true)} className="w-full py-1.5 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[12px] font-medium rounded-md transition-colors">
-              Create Community
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Discover Communities Section */}
-        <motion.div variants={itemVariants} className="flex flex-col gap-6">
-          <div>
-            <h2 className="text-[18px] font-semibold text-white mb-1">Discover Communities</h2>
-            <p className="text-[13px] text-[#a1a1aa]">Find communities that match your interests and goals.</p>
-          </div>
-
-          {/* Filters Bar */}
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#121212] border border-[#262626] rounded-md min-w-[200px]">
-              <Search size={14} className="text-[#71717a]" />
-              <input type="text" placeholder="Search communities..." className="bg-transparent border-none outline-none text-[12px] text-white w-full" />
-            </div>
-            {["Technology", "Industry", "Role", "Skill Level", "Community Size", "Most Active"].map(filter => (
-              <button key={filter} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#121212] border border-[#262626] text-[#a1a1aa] hover:text-white text-[12px] rounded-md whitespace-nowrap transition-colors">
-                {filter} <ChevronDown size={14} />
-              </button>
+        {/* Joined */}
+        {joinedCommunities.length > 0 && (
+          <div className="py-2">
+            <p className="px-4 py-1 text-[10px] font-bold text-[#71717a] uppercase tracking-widest">Your Communities</p>
+            {joinedCommunities.map((c) => (
+              <SidebarItem
+                key={c.id}
+                community={c}
+                active={selectedId === c.id}
+                onClick={() => handleSelect(c.id)}
+              />
             ))}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-            {/* LEFT: Community List */}
-            <div className="xl:col-span-7 flex flex-col gap-4">
-              {/* Firestore communities */}
-              {loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 size={20} className="text-[#71717a] animate-spin" />
-                </div>
-              ) : communities.length > 0 ? (
-                communities.map((c) => (
-                  <FirestoreCommunityListItem
-                    key={c.id}
-                    community={c}
-                    active={selectedCommunityId === c.id}
-                    isMember={membershipMap[c.id] || joinedIds.has(c.id)}
-                    actionLoading={actionLoading === c.id}
-                    onSelect={() => { setSelectedCommunityId(c.id); setActiveTab(membershipMap[c.id] || joinedIds.has(c.id) ? "Chat" : "Overview"); }}
-                    onJoin={() => handleJoin(c.id)}
-                    onLeave={() => handleLeave(c.id)}
-                  />
-                ))
-              ) : null}
+        {/* Divider */}
+        {joinedCommunities.length > 0 && discoverCommunities.length > 0 && (
+          <div className="mx-4 border-t border-[#1e1e1e]" />
+        )}
 
-              {/* Static fallback items (always visible for discovery) */}
-              {error && <p className="text-[12px] text-red-300 px-2">{error}</p>}
-            </div>
+        {/* Discover */}
+        {discoverCommunities.length > 0 && (
+          <div className="py-2">
+            <p className="px-4 py-1 text-[10px] font-bold text-[#71717a] uppercase tracking-widest">Discover</p>
+            {discoverCommunities.map((c) => (
+              <SidebarItem
+                key={c.id}
+                community={c}
+                active={selectedId === c.id}
+                onClick={() => handleSelect(c.id)}
+              />
+            ))}
+          </div>
+        )}
 
-            {/* RIGHT: Detail Panel */}
-            <div className="xl:col-span-5 relative">
-              <div className="sticky top-[88px] flex flex-col h-[calc(100vh-120px)] bg-[#0A0A0A] border border-[#1e1e1e] rounded-xl overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-full h-[200px] bg-gradient-to-b from-[#1e1a2e]/30 to-transparent pointer-events-none" />
-                <div className="absolute top-10 right-0 w-[300px] h-[100px] bg-gradient-to-r from-transparent via-[#5e5ce6]/10 to-transparent blur-3xl pointer-events-none" />
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={18} className="text-[#71717a] animate-spin" />
+          </div>
+        )}
 
-                {selectedCommunity ? (
-                  <div className="flex flex-col h-full relative z-10">
-                    {/* Banner */}
-                    {selectedCommunity.bannerUrl && (
-                      <div className="h-24 w-full overflow-hidden shrink-0">
-                        <img src={selectedCommunity.bannerUrl} alt="Banner" className="w-full h-full object-cover opacity-60" />
-                      </div>
-                    )}
-                    {/* Community header */}
-                    <div className="p-5 pb-3 shrink-0">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-xl bg-[#121212] border border-[#262626] flex items-center justify-center shrink-0">
-                          <Users size={22} className="text-[#b19cd9]" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h2 className="text-[18px] font-semibold text-white truncate">{selectedCommunity.name}</h2>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            <span className="text-[#a1a1aa]">{selectedCommunity.memberCount ?? 0} Members</span>
-                            <span className="text-[#71717a]">•</span>
-                            <span className="text-[#22c55e]">{selectedCommunity.category}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-[12px] text-[#a1a1aa] leading-relaxed mb-4">{selectedCommunity.description}</p>
-                      <div className="flex items-center gap-2 mb-4">
-                        {isMember ? (
-                          <button
-                            onClick={() => handleLeave(selectedCommunity.id)}
-                            disabled={actionLoading === selectedCommunity.id}
-                            className="flex-1 py-2 bg-[#121212] border border-[#262626] hover:border-red-500/40 hover:text-red-400 text-white text-[12px] font-medium rounded-lg transition-all flex items-center justify-center gap-1.5"
-                          >
-                            {actionLoading === selectedCommunity.id ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />} Leave
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleJoin(selectedCommunity.id)}
-                            disabled={actionLoading === selectedCommunity.id}
-                            className="flex-1 py-2 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[12px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            {actionLoading === selectedCommunity.id ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Join Community
-                          </button>
-                        )}
-                        <button className="w-9 h-9 flex items-center justify-center bg-[#121212] border border-[#262626] hover:bg-[#1A1A1A] text-white rounded-lg transition-colors shrink-0">
-                          <MoreHorizontal size={14} />
-                        </button>
-                      </div>
+        {!loading && communities.length === 0 && (
+          <div className="px-4 py-6 flex flex-col items-center text-center gap-2">
+            <Hash size={24} className="text-[#3f3f46]" />
+            <p className="text-[12px] text-[#71717a]">No communities yet.</p>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="text-[11px] text-[#5e5ce6] hover:text-[#c2c1ff] transition-colors"
+            >
+              Create the first one
+            </button>
+          </div>
+        )}
 
-                      {/* Tabs */}
-                      <div className="flex gap-4 border-b border-[#1e1e1e] overflow-x-auto custom-scrollbar">
-                        {TABS.map(tab => (
-                          <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`pb-3 text-[11px] font-medium transition-colors relative whitespace-nowrap flex items-center gap-1.5 ${activeTab === tab ? "text-[#b19cd9]" : "text-[#a1a1aa] hover:text-white"}`}
-                          >
-                            {tab === "Chat" && <MessageCircle size={11} />}
-                            {tab}
-                            {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#b19cd9] rounded-t-full" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+        {error && <p className="px-4 py-2 text-[11px] text-red-300">{error}</p>}
+      </div>
 
-                    {/* Tab content */}
-                    <div className="flex-1 min-h-0 overflow-hidden">
-                      {activeTab === "Chat" && isMember && (
-                        <CommunityChat communityId={selectedCommunity.id} />
-                      )}
-                      {activeTab === "Overview" && (
-                        <div className="p-5 overflow-y-auto h-full custom-scrollbar flex flex-col gap-4">
-                          <div className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-4">
-                            <h3 className="text-[12px] font-semibold text-white mb-2">About This Community</h3>
-                            <p className="text-[11px] text-[#a1a1aa] leading-relaxed">{selectedCommunity.description}</p>
-                          </div>
-                          <div className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-4">
-                            <h3 className="text-[12px] font-semibold text-white mb-2">Community Info</h3>
-                            <ul className="flex flex-col gap-1.5 text-[11px] text-[#a1a1aa]">
-                              <li className="flex items-center gap-1.5"><span className="w-1 h-1 bg-[#71717a] rounded-full" />{selectedCommunity.memberCount ?? 0} members</li>
-                              <li className="flex items-center gap-1.5"><span className="w-1 h-1 bg-[#71717a] rounded-full" />Category: {selectedCommunity.category}</li>
-                              <li className="flex items-center gap-1.5"><span className="w-1 h-1 bg-[#71717a] rounded-full" />Privacy: {selectedCommunity.privacy}</li>
-                            </ul>
-                          </div>
-                          {!isMember && (
-                            <button
-                              onClick={() => handleJoin(selectedCommunity.id)}
-                              disabled={actionLoading === selectedCommunity.id}
-                              className="w-full py-2.5 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              {actionLoading === selectedCommunity.id ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                              Join to access chat
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+      {/* ── Main Panel ───────────────────────────────── */}
+      {selected ? (
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Channel header */}
+          <div className="h-14 shrink-0 flex items-center justify-between px-5 border-b border-[#1e1e1e] bg-[#0A0A0A]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] border border-[#262626] overflow-hidden shrink-0 flex items-center justify-center">
+                {selected.bannerUrl ? (
+                  <img src={selected.bannerUrl} alt={selected.name} className="w-full h-full object-cover" />
                 ) : (
-                  /* Default static preview when nothing is selected */
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 relative z-10 flex flex-col items-center justify-center text-center">
-                    <Users size={40} className="text-[#71717a] mb-4" />
-                    <h3 className="text-[16px] font-semibold text-white mb-2">Select a Community</h3>
-                    <p className="text-[12px] text-[#a1a1aa]">Click any community on the left to view details and join the chat.</p>
-                  </div>
+                  <Users size={14} className="text-[#b19cd9]" />
                 )}
               </div>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-white truncate">{selected.name}</p>
+                <p className="text-[10px] text-[#71717a]">{selected.memberCount ?? 0} members · {selected.category}</p>
+              </div>
+            </div>
+
+            {/* Tab pills */}
+            <div className="flex items-center gap-1 bg-[#121212] border border-[#1e1e1e] rounded-lg p-1">
+              {(isMember ? ["chat", "overview", "members"] : ["overview"]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab as "chat" | "overview" | "members")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all capitalize ${
+                    activeTab === tab
+                      ? "bg-[#1e1a2e] text-[#b19cd9]"
+                      : "text-[#71717a] hover:text-white"
+                  }`}
+                >
+                  {tab === "chat" && <MessageCircle size={11} />}
+                  {tab === "overview" && <Info size={11} />}
+                  {tab === "members" && <User size={11} />}
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {isMember ? (
+                <>
+                  {isOwner && (
+                    <button
+                      onClick={() => setConfirmDeleteId(selected.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
+                    >
+                      <Trash2 size={11} /> Delete
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleLeave(selected.id)}
+                    disabled={actionLoading === selected.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#a1a1aa] hover:text-white bg-[#121212] border border-[#1e1e1e] hover:border-[#3f3f46] rounded-lg transition-all"
+                  >
+                    {actionLoading === selected.id ? <Loader2 size={11} className="animate-spin" /> : <LogOut size={11} />}
+                    Leave
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => handleJoin(selected.id)}
+                  disabled={actionLoading === selected.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-[#5e5ce6] hover:bg-[#4d4ad5] rounded-lg transition-colors"
+                >
+                  {actionLoading === selected.id ? <Loader2 size={11} className="animate-spin" /> : <UserPlus size={11} />}
+                  Join
+                </button>
+              )}
             </div>
           </div>
-        </motion.div>
-      </motion.div>
+
+          {/* Content area */}
+          <div className="flex-1 overflow-hidden min-h-0">
+            {activeTab === "chat" && isMember && (
+              <CommunityChat communityId={selected.id} />
+            )}
+
+            {activeTab === "overview" && (
+              <div className="h-full overflow-y-auto custom-scrollbar">
+                {/* Banner */}
+                {selected.bannerUrl && (
+                  <div className="h-48 w-full overflow-hidden relative">
+                    <img src={selected.bannerUrl} alt="banner" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+                  </div>
+                )}
+                <div className="p-6 flex flex-col gap-5 max-w-2xl">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-[#121212] border border-[#1e1e1e] flex items-center justify-center shrink-0 overflow-hidden">
+                      {selected.bannerUrl ? (
+                        <img src={selected.bannerUrl} alt={selected.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Users size={28} className="text-[#b19cd9]" />
+                      )}
+                    </div>
+                    <div>
+                      <h2 className="text-[22px] font-bold text-white mb-1">{selected.name}</h2>
+                      <div className="flex items-center gap-3 text-[12px] text-[#a1a1aa]">
+                        <span>{selected.memberCount ?? 0} members</span>
+                        <span className="text-[#3f3f46]">·</span>
+                        <span>{selected.category}</span>
+                        <span className="text-[#3f3f46]">·</span>
+                        <span className="flex items-center gap-1">
+                          {selected.privacy === "public" ? <Globe size={11} /> : <Lock size={11} />}
+                          {selected.privacy}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-5">
+                    <h3 className="text-[13px] font-semibold text-white mb-2">About</h3>
+                    <p className="text-[13px] text-[#a1a1aa] leading-relaxed">{selected.description}</p>
+                  </div>
+
+                  {!isMember && (
+                    <button
+                      onClick={() => handleJoin(selected.id)}
+                      disabled={actionLoading === selected.id}
+                      className="flex items-center justify-center gap-2 py-3 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[14px] font-semibold rounded-xl transition-colors"
+                    >
+                      {actionLoading === selected.id ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
+                      Join Community to Chat
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "members" && isMember && (
+              <MembersPanel communityId={selected.id} />
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Empty state */
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-[#0A0A0A]">
+          <div className="w-20 h-20 rounded-2xl bg-[#121212] border border-[#1e1e1e] flex items-center justify-center mb-4">
+            <Hash size={36} className="text-[#3f3f46]" />
+          </div>
+          <h2 className="text-[20px] font-semibold text-white mb-2">Welcome to Communities</h2>
+          <p className="text-[13px] text-[#71717a] max-w-xs mb-6">
+            Join existing communities or create your own to start chatting with like-minded developers.
+          </p>
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[13px] font-semibold rounded-xl transition-colors"
+          >
+            <Plus size={16} /> Create a Community
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[16px] font-semibold text-white">Delete Community?</h3>
+                <button onClick={() => setConfirmDeleteId(null)} className="text-[#71717a] hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-[13px] text-[#a1a1aa] mb-2">
+                This will permanently delete{" "}
+                <strong className="text-white">{communities.find((c) => c.id === confirmDeleteId)?.name}</strong>,
+                including all chat messages and members. This cannot be undone.
+              </p>
+              <p className="text-[11px] text-red-400 mb-6">⚠ Only the community admin can perform this action.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-[13px] font-medium hover:bg-white/10 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(confirmDeleteId)}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-[13px] font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <CreateCommunityModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
     </div>
   );
 }
 
-/* ─── Helpers ────────────────────────────────────────────── */
-
-function CategoryCard({ icon, title, desc, count }: { icon: React.ReactNode; title: string; desc: string; count: string }) {
+/* ─── Sidebar Item ─────────────────────────────────────── */
+function SidebarItem({
+  community, active, onClick,
+}: { community: Community; active: boolean; onClick: () => void }) {
   return (
-    <div className="min-w-[240px] p-5 bg-[#121212] border border-[#1e1e1e] hover:border-[#3f3f46] transition-colors rounded-xl flex flex-col shrink-0 cursor-pointer">
-      <div className="w-8 h-8 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-[#262626] mb-3">{icon}</div>
-      <h3 className="text-[14px] font-semibold text-white mb-2">{title}</h3>
-      <p className="text-[11px] text-[#a1a1aa] mb-4 flex-1 leading-relaxed">{desc}</p>
-      <span className="text-[11px] text-[#71717a]">{count}</span>
-    </div>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 transition-all text-left ${
+        active ? "bg-[#1e1a2e] text-white" : "text-[#a1a1aa] hover:bg-[#121212] hover:text-white"
+      }`}
+    >
+      <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] border border-[#262626] shrink-0 overflow-hidden flex items-center justify-center">
+        {community.bannerUrl ? (
+          <img src={community.bannerUrl} alt={community.name} className="w-full h-full object-cover" />
+        ) : (
+          <Hash size={14} className="text-[#71717a]" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium truncate">{community.name}</p>
+        <p className="text-[10px] text-[#71717a]">{community.memberCount ?? 0} members</p>
+      </div>
+      {active && <ChevronRight size={12} className="text-[#b19cd9] shrink-0" />}
+    </button>
   );
 }
 
-interface FirestoreCommunityListItemProps {
-  community: Community;
-  active: boolean;
-  isMember: boolean;
-  actionLoading: boolean;
-  onSelect: () => void;
-  onJoin: () => void;
-  onLeave: () => void;
-}
+/* ─── Members Panel ────────────────────────────────────── */
+function MembersPanel({ communityId }: { communityId: string }) {
+  const [members, setMembers] = useState<{ uid: string; displayName: string; photoURL: string; role: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-function FirestoreCommunityListItem({ community, active, isMember, actionLoading, onSelect, onJoin, onLeave }: FirestoreCommunityListItemProps) {
+  useEffect(() => {
+    import("firebase/firestore").then(({ collection, getDocs }) => {
+      import("../../../lib/firebase").then(({ db }) => {
+        if (!db) return;
+        getDocs(collection(db, "communities", communityId, "members")).then((snap) => {
+          setMembers(snap.docs.map((d) => d.data() as { uid: string; displayName: string; photoURL: string; role: string }));
+          setLoading(false);
+        });
+      });
+    });
+  }, [communityId]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-32">
+      <Loader2 size={18} className="text-[#71717a] animate-spin" />
+    </div>
+  );
+
   return (
-    <div
-      onClick={onSelect}
-      className={`flex flex-col md:flex-row md:items-start gap-4 p-5 rounded-xl transition-all border cursor-pointer ${active ? "bg-[#1e1a2e]/30 border-[#2a2440]" : "bg-[#121212] border-[#1e1e1e] hover:border-[#3f3f46]"}`}
-    >
-      <div className="flex-1 flex gap-4 min-w-0">
-        <div className="w-12 h-12 rounded-xl bg-[#0A0A0A] border border-[#262626] flex items-center justify-center shrink-0 overflow-hidden">
-          {community.bannerUrl ? (
-            <img src={community.bannerUrl} alt={community.name} className="w-full h-full object-cover" />
-          ) : (
-            <Users size={22} className="text-[#b19cd9]" />
-          )}
-        </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-[15px] font-semibold text-white">{community.name}</h3>
-            {isMember && <span className="px-1.5 py-0.5 bg-[#22c55e]/10 text-[#22c55e] text-[9px] font-bold rounded border border-[#22c55e]/20">MEMBER</span>}
+    <div className="p-5 overflow-y-auto h-full custom-scrollbar">
+      <h3 className="text-[13px] font-semibold text-white mb-4">Members — {members.length}</h3>
+      <div className="flex flex-col gap-2">
+        {members.map((m) => (
+          <div key={m.uid} className="flex items-center gap-3 p-3 bg-[#121212] border border-[#1e1e1e] rounded-xl">
+            <div className="w-9 h-9 rounded-full bg-[#1A1A1A] border border-[#262626] overflow-hidden shrink-0 flex items-center justify-center text-[11px] font-bold text-[#b19cd9]">
+              {m.photoURL ? <img src={m.photoURL} alt={m.displayName} className="w-full h-full object-cover" /> : m.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white truncate">{m.displayName}</p>
+            </div>
+            {(m.role === "owner" || m.role === "admin") && (
+              <span className="px-2 py-0.5 bg-[#b19cd9]/20 text-[#b19cd9] text-[9px] font-bold uppercase rounded border border-[#b19cd9]/30">
+                {m.role}
+              </span>
+            )}
           </div>
-          <p className="text-[12px] text-[#a1a1aa] mb-2 line-clamp-1">{community.description}</p>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="px-2 py-0.5 bg-[#1A1A1A] border border-[#262626] text-[#71717a] text-[10px] rounded">{community.category}</span>
-            <span className="text-[#71717a]">{community.memberCount ?? 0} Members</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-        {isMember ? (
-          <button onClick={onLeave} disabled={actionLoading} className="flex items-center gap-1 py-1.5 px-3 bg-[#121212] border border-[#262626] hover:border-red-500/30 hover:text-red-400 text-white text-[11px] font-medium rounded-md transition-all">
-            {actionLoading ? <Loader2 size={11} className="animate-spin" /> : <LogOut size={11} />} Leave
-          </button>
-        ) : (
-          <button onClick={onJoin} disabled={actionLoading} className="flex items-center gap-1 py-1.5 px-3 bg-[#5e5ce6] hover:bg-[#4d4ad5] text-white text-[11px] font-medium rounded-md transition-colors">
-            {actionLoading ? <Loader2 size={11} className="animate-spin" /> : <UserPlus size={11} />} Join
-          </button>
-        )}
-        <button className="w-8 h-8 flex items-center justify-center bg-[#121212] border border-[#262626] hover:bg-[#1A1A1A] text-[#a1a1aa] hover:text-white rounded-md transition-colors">
-          <Bookmark size={12} />
-        </button>
+        ))}
       </div>
     </div>
   );
