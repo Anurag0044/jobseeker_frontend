@@ -2,31 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Users ──────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false;
     }
 
+    // ── Connections ────────────────────────────────────────────
     match /connections/{connectionId} {
-      // Both participants can read the connection
       allow read: if request.auth != null
         && (request.auth.uid == resource.data.fromUid
             || request.auth.uid == resource.data.toUid);
-      // Only the sender can create a connection request
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.fromUid
         && request.resource.data.status == "pending";
-      // Either participant can update (accept) or the sender can update (withdraw)
       allow update: if request.auth != null
         && (request.auth.uid == resource.data.fromUid
             || request.auth.uid == resource.data.toUid);
-      // Either participant can delete (withdraw/remove)
       allow delete: if request.auth != null
         && (request.auth.uid == resource.data.fromUid
             || request.auth.uid == resource.data.toUid);
     }
 
+    // ── Direct Chats ───────────────────────────────────────────
     match /chats/{chatId} {
       allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participantIds;
@@ -41,6 +41,61 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
         allow update, delete: if false;
       }
+    }
+
+    // ── Communities ────────────────────────────────────────────
+    match /communities/{communityId} {
+      // Any authenticated user can read community info
+      allow read: if request.auth != null;
+      // Owner can create
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.ownerUid;
+      // Owner can update community metadata
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.ownerUid;
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.ownerUid;
+
+      // Community members subcollection
+      match /members/{memberId} {
+        // Members can read the member list
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+        // Community owner can add/remove any member;
+        // users can add themselves (joining)
+        allow create: if request.auth != null
+          && (request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.ownerUid
+              || request.auth.uid == memberId);
+        allow update: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.ownerUid;
+        allow delete: if request.auth != null
+          && (request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.ownerUid
+              || request.auth.uid == memberId);
+      }
+
+      // Community messages subcollection
+      match /messages/{messageId} {
+        // Only members can read and write messages
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+        allow create: if request.auth != null
+          && request.auth.uid == request.resource.data.senderId
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Projects ───────────────────────────────────────────────
+    match /projects/{projectId} {
+      // Any authenticated user can read projects (for profiles)
+      allow read: if request.auth != null;
+      // Only the owner can create, update, delete
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.ownerUid;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.ownerUid;
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.ownerUid;
     }
   }
 }

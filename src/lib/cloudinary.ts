@@ -5,7 +5,15 @@ export interface CloudinaryUploadResult {
   height?: number;
 }
 
-export async function uploadImageToCloudinary(file: File): Promise<CloudinaryUploadResult> {
+/**
+ * Upload a file to Cloudinary using an unsigned preset.
+ * @param file     - The File object to upload.
+ * @param folder   - Cloudinary folder path (default: "forgex/profiles").
+ */
+export async function uploadImageToCloudinary(
+  file: File,
+  folder = "forgex/profiles"
+): Promise<CloudinaryUploadResult> {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
@@ -18,7 +26,7 @@ export async function uploadImageToCloudinary(file: File): Promise<CloudinaryUpl
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "forgex/profiles");
+  formData.append("folder", folder);
 
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
