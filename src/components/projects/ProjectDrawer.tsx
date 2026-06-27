@@ -13,7 +13,7 @@ interface ProjectDrawerProps {
 }
 
 // Custom Recharts Tooltip
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#121212] border border-[#262626] p-3 rounded-lg shadow-xl">

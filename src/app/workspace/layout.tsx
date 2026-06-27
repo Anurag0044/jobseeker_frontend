@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Bell, ChevronDown, Sun, Crown, ArrowRight,
   UserCircle, Grid2X2, Zap, Send, MessageCircle, Link2,
-  Bookmark, Sparkles, Briefcase, Layers, Users, Settings2, ShieldCheck
+  Bookmark, Sparkles, Briefcase, Layers, Users, Settings2, ShieldCheck, Bot, Hexagon, Cpu, Atom, Command, Aperture
 } from "lucide-react";
 import { useConnections } from "../../hooks/useConnections";
 import ForgeXLogo from "../../components/ui/ForgeXLogo";
@@ -52,7 +52,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           }}
         >
           <TopBar />
-          <div className="flex-1 overflow-y-auto custom-scrollbar relative z-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar relative z-0 min-h-0 flex flex-col">
             {children}
           </div>
         </main>
@@ -67,36 +67,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 const navItemsBase = [
   { href: "/workspace/profile", icon: UserCircle, label: "Profile", iconVariants: { clicked: { scale: [1, 0.8, 1.05, 1], transition: { duration: 0.5, ease: "easeInOut" } } } },
   { href: "/workspace/projects", icon: Grid2X2, label: "Projects", iconVariants: { clicked: { rotate: [0, 90], scale: [1, 0.9, 1], transition: { duration: 0.5, ease: "easeInOut" } } } },
-  { 
-    href: "/workspace/skills", 
-    icon: Zap, 
-    label: "Skills", 
-    iconVariants: { 
-      clicked: { 
-        y: [-80, 0, -8, 0], 
-        scaleY: [3, 1, 1.2, 1],
-        scaleX: [0.5, 1, 1.1, 1],
-        opacity: [0, 1, 1, 1],
-        filter: [
-          "brightness(3) drop-shadow(0px 0px 20px rgba(253,224,71,1))", 
-          "brightness(2.5) drop-shadow(0px 0px 30px rgba(253,224,71,1))", 
-          "brightness(1.5) drop-shadow(0px 0px 10px rgba(253,224,71,0.5))", 
-          "brightness(1) drop-shadow(0px 0px 0px transparent)"
-        ],
-        transition: { 
-          duration: 0.6, 
-          times: [0, 0.15, 0.35, 1],
-          ease: "easeOut" 
-        } 
-      } 
-    } 
-  },
-  { href: "/workspace/applications", icon: Send, label: "Applications", iconVariants: { clicked: { x: [0, 30, -30, 0], y: [0, -30, 30, 0], opacity: [1, 0, 0, 1], transition: { duration: 0.65, times: [0, 0.4, 0.6, 1] } } } },
   { href: "/workspace/messages", icon: MessageCircle, label: "Messages", badge: "", iconVariants: { clicked: { scale: [1, 1.1, 0.9, 1.05, 1], rotate: [0, -8, 8, -8, 0], transition: { duration: 0.5, ease: "easeInOut" } } } },
   { href: "/workspace/connections", icon: Link2, label: "Connections", badge: "", iconVariants: { clicked: { scaleX: [1, 0.6, 1.1, 1], scaleY: [1, 1.2, 0.9, 1], rotate: [0, -15, 10, 0], transition: { duration: 0.5, ease: "easeInOut" } } } },
-  { href: "/workspace/saved", icon: Bookmark, label: "Saved", iconVariants: { clicked: { y: [0, 10, -5, 0], scale: [1, 0.9, 1], transition: { duration: 0.4 } } } },
-  { href: "/workspace/ai-agents", icon: Sparkles, label: "Forge Assistant", iconVariants: { clicked: { rotate: [0, 180, 360], scale: [1, 1.4, 1], transition: { duration: 0.6 } } } },
-  { href: "/workspace/jobs", icon: Briefcase, label: "Jobs", iconVariants: { clicked: { y: [0, -10, 0, -5, 0], scaleY: [1, 0.8, 1.1, 1], transition: { duration: 0.5 } } } },
+  { href: "/workspace/ai-agents", icon: Hexagon, label: "AgentX", iconVariants: { clicked: { rotate: [0, 180, 360], scale: [1, 1.4, 1], transition: { duration: 0.6 } } } },
   { href: "/workspace/companies", icon: Layers, label: "Companies", iconVariants: { clicked: { x: [0, -5, 5, -5, 0], y: [0, 5, -5, 5, 0], transition: { duration: 0.4 } } } },
   { href: "/workspace/communities", icon: Users, label: "Communities", iconVariants: { clicked: { scaleX: [1, 1.3, 0.9, 1], scaleY: [1, 0.8, 1.1, 1], transition: { duration: 0.4 } } } },
   { href: "/workspace/settings", icon: Settings2, label: "Settings", iconVariants: { clicked: { rotate: [0, 180], transition: { duration: 0.5 } } } },
@@ -149,8 +122,8 @@ function Sidebar() {
         </div>
       </div>
 
-      <div className="flex-1 relative z-10 px-4">
-        <div className="flex flex-col gap-1 mb-2">
+      <div className="flex-1 relative z-10 px-4 overflow-y-auto custom-scrollbar min-h-0">
+        <div className="flex flex-col gap-1 py-2">
           {navItems.map((item) => (
             <NavItem
               key={item.href}
@@ -169,7 +142,7 @@ function Sidebar() {
 
       <div className="flex flex-col gap-3 px-5 mt-auto relative z-10">
         {/* Upgrade Banner */}
-        <Link href="/workspace/upgrade" className="flex items-center gap-3 p-3 rounded-2xl transition-all duration-300 group hover:scale-[1.02]"
+        <Link href="/workspace/upgrade" scroll={false} className="flex items-center gap-3 p-3 rounded-2xl transition-all duration-300 group hover:scale-[1.02]"
           style={{
             background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
@@ -208,7 +181,7 @@ interface NavItemProps {
   label: string;
   active?: boolean;
   badge?: string;
-  iconVariants?: any;
+  iconVariants?: Record<string, unknown>;
   isHovered: boolean;
   onHover: () => void;
 }
@@ -226,6 +199,7 @@ function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, on
       href={href}
       onMouseEnter={onHover}
       onClick={handleClick}
+      scroll={false}
       className={`relative flex items-center justify-between p-2 px-3.5 rounded-full transition-all duration-300 group overflow-hidden ${active
         ? "text-white"
         : "text-slate-400 hover:text-white"

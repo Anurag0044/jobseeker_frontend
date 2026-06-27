@@ -241,7 +241,7 @@ export default function ProjectsPage() {
               ].map(mode => (
                 <button
                   key={mode.id}
-                  onClick={() => setViewMode(mode.id as any)}
+                  onClick={() => setViewMode(mode.id as 'grid' | 'list' | 'compact')}
                   className={`p-1.5 rounded-lg transition-all duration-300 ${viewMode === mode.id ? 'bg-white/10 text-white shadow-sm' : 'text-[#a1a1aa] hover:text-white hover:bg-white/5'}`}
                 >
                   <mode.icon size={16} />
