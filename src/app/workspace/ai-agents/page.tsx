@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Sparkles,
   Search,
@@ -58,66 +60,133 @@ export default function ForgeAssistantPage() {
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [activeStageIndex, setActiveStageIndex] = useState<number>(0);
   const [showResults, setShowResults] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string>("");
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const runPipeline = async () => {
-      // Small initial delay
-      await new Promise(r => setTimeout(r, 600));
-
-      for (let i = 0; i < STAGE_DURATIONS.length; i++) {
-        if (!isMounted) return;
-        
-        // 1. Mark as Active
-        const startTime = Date.now();
-        setActiveStageIndex(i);
-        setStages(prev => {
-          const next = [...prev];
-          next[i] = { ...next[i], status: "active", startedAt: startTime };
-          return next;
-        });
-
-        // 2. Wait for simulated duration
-        await new Promise(r => setTimeout(r, STAGE_DURATIONS[i]));
-
-        // 3. Mark as Completed
-        if (!isMounted) return;
-        const endTime = Date.now();
-        setStages(prev => {
-          const next = [...prev];
-          next[i] = { 
-            ...next[i], 
-            status: "completed", 
-            completedAt: endTime,
-            duration: endTime - startTime
-          };
-          return next;
-        });
-        
-        // Show results when reaching "Preparing recommendations"
-        if (i === 6) {
-           setShowResults(true);
-        }
-
-        // 4. Brief pause before next stage
-        await new Promise(r => setTimeout(r, 300));
-      }
-
-      // 5. Final Stage (Monitoring)
-      if (!isMounted) return;
-      setActiveStageIndex(7);
+  const runMission = async (query: string) => {
+    setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
+    setShowResults(false);
+    setAiResponse("");
+    
+    let fullResponse = "";
+    
+    const activateStage = (id: string) => {
       setStages(prev => {
         const next = [...prev];
-        next[7] = { ...next[7], status: "active", startedAt: Date.now() };
+        const idx = next.findIndex(s => s.id === id);
+        if (idx !== -1) {
+          setActiveStageIndex(idx);
+          next[idx] = { ...next[idx], status: "active", startedAt: Date.now() };
+        }
         return next;
       });
     };
 
-    runPipeline();
+    const completeStage = (id: string) => {
+      setStages(prev => {
+        const next = [...prev];
+        const idx = next.findIndex(s => s.id === id);
+        if (idx !== -1) {
+          next[idx] = { 
+            ...next[idx], 
+            status: "completed", 
+            completedAt: Date.now(),
+            duration: Date.now() - (next[idx].startedAt || Date.now())
+          };
+        }
+        return next;
+      });
+    };
 
-    return () => { isMounted = false; };
-  }, []);
+    activateStage("build_context");
+
+    let hasWrappedUp = false;
+    const wrapUp = () => {
+      if (hasWrappedUp) return;
+      hasWrappedUp = true;
+      
+      setStages(prev => prev.map(s => ({ ...s, status: "completed" as const, timestamp: Date.now() })));
+      setActiveStageIndex(-1);
+      setShowResults(true);
+    };
+
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/assistant/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: query, phone_number: "test_user" }),
+      });
+
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+        
+      
+      let isDone = false;
+      while (!isDone) {
+        const { value, done } = await reader.read();
+        if (done) {
+          wrapUp();
+          break;
+        }
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+        
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.slice(6);
+            if (!dataStr) continue;
+            
+            try {
+              const data = JSON.parse(dataStr);
+
+              if (data.type === "tool_start") {
+                if (data.tool === "search_web") {
+                  activateStage("find_companies");
+                } else if (data.tool === "get_user_profile") {
+                  activateStage("read_resume");
+                }
+              } else if (data.type === "tool_end") {
+                if (data.tool === "search_web") {
+                  completeStage("find_companies");
+                  activateStage("compare_exp");
+                } else if (data.tool === "get_user_profile") {
+                  completeStage("read_resume");
+                }
+              } else if (data.type === "token") {
+                fullResponse += data.content;
+                // Try to loosely set aiResponse so user sees SOMETHING while streaming
+                setAiResponse(prev => prev + data.content);
+                // If we get tokens, the tools are done. Fast forward to prepare_recs if we aren't there yet.
+                setStages(prev => {
+                   const next = [...prev];
+                   const prepIdx = next.findIndex(s => s.id === "prepare_recs");
+                   if (next[prepIdx].status === "pending") {
+                      // auto-complete previous stages
+                      for(let i=0; i<prepIdx; i++) next[i].status = "completed";
+                      next[prepIdx].status = "active";
+                      setActiveStageIndex(prepIdx);
+                   }
+                   return next;
+                });
+              } else if (data.type === "done") {
+                wrapUp();
+              } else if (data.type === "error") {
+                 console.error("Backend error:", data.error);
+                 alert("The AI agent encountered an error: " + data.error);
+                 setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
+              }
+            } catch (err) {
+              console.error("Parse error:", err);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Network or stream error:", error);
+      wrapUp();
+    }
+  };
 
   // Helper to format time HH:MM:SS
   const formatTime = (timestamp?: number) => {
@@ -218,7 +287,7 @@ export default function ForgeAssistantPage() {
              
              {/* Message Bar Section */}
              <div className="w-full px-2 pb-8 z-20">
-               <MessageBar />
+               <MessageBar onDeploy={runMission} />
              </div>
 
           </div>
@@ -232,69 +301,37 @@ export default function ForgeAssistantPage() {
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
                 className="flex flex-col gap-6"
               >
-                {/* Top Opportunities */}
-                <div className="shrink-0 flex flex-col">
+                {/* AI Agent Markdown Summary */}
+                <div className="shrink-0 flex flex-col mb-4 w-full">
                   <h2 className="text-[14px] font-medium flex items-center gap-2 mb-4 text-white/90">
-                    Recommended Opportunities <Sparkles className="text-purple-500 w-4 h-4" />
+                    AI Agent Findings <BrainCircuit className="text-purple-500 w-4 h-4" />
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <DetailedOpportunityCard 
-                      company="Google"
-                      role="Frontend Engineer Intern"
-                      location="Bangalore, India"
-                      match="98%"
-                      desc="Strongly recommended. Your React and Next.js portfolio projects directly address their core infrastructure needs."
-                      logo={
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22px" height="22px">
-                           <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-                           <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-                           <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-                           <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-                        </svg>
-                      }
-                    />
-                    <DetailedOpportunityCard 
-                      company="Microsoft"
-                      role="Software Engineer Intern"
-                      location="Hyderabad, India"
-                      match="96%"
-                      desc="Excellent fit. Evaluated highly due to your demonstrated problem solving skills and TypeScript proficiency."
-                      logo={
-                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 21 21">
-                             <path fill="#f25022" d="M1 1h9v9H1z"/>
-                             <path fill="#7fba00" d="M11 1h9v9h-9z"/>
-                             <path fill="#00a4ef" d="M1 11h9v9H1z"/>
-                             <path fill="#ffb900" d="M11 11h9v9h-9z"/>
-                         </svg>
-                      }
-                    />
-                    <DetailedOpportunityCard 
-                      company="Notion"
-                      role="Frontend Developer Intern"
-                      location="Remote · Worldwide"
-                      match="94%"
-                      desc="High potential. Their product team seeks the exact UI development experience present in your background."
-                      logo={
-                        <div className="w-6 h-6 bg-white rounded flex items-center justify-center text-black font-serif font-bold text-[18px] leading-none tracking-tighter">
-                          N
-                        </div>
-                      }
-                    />
+                  <div className="p-6 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white/90 leading-relaxed w-full shadow-lg">
+                    {aiResponse ? (
+                      <div className="prose prose-invert prose-purple max-w-none">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 transition-colors" />,
+                            h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold mt-6 mb-4 text-white" />,
+                            h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold mt-5 mb-3 text-white/95" />,
+                            h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold mt-4 mb-2 text-white/90" />,
+                            ul: ({node, ...props}) => <ul {...props} className="list-disc pl-5 mb-4 space-y-1 text-white/80" />,
+                            ol: ({node, ...props}) => <ol {...props} className="list-decimal pl-5 mb-4 space-y-1 text-white/80" />,
+                            li: ({node, ...props}) => <li {...props} className="text-[14.5px] leading-relaxed" />,
+                            p: ({node, ...props}) => <p {...props} className="mb-4 text-[14.5px] leading-relaxed text-white/80" />,
+                            strong: ({node, ...props}) => <strong {...props} className="font-semibold text-white/95" />,
+                          }}
+                        >
+                          {aiResponse}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <span className="animate-pulse text-white/50 text-[14.5px]">Synthesizing findings...</span>
+                    )}
                   </div>
                 </div>
 
-                {/* AI Insights Row */}
-                <div className="shrink-0 flex flex-col mb-4">
-                  <h2 className="text-[14px] font-medium flex items-center gap-2 mb-4 text-white/90">
-                    Career Insights <BrainCircuit className="text-purple-500 w-4 h-4" />
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                     <InsightCard icon={<Rocket className="w-4 h-4 text-indigo-400" />} text="Your portfolio is attracting high-growth AI startup opportunities." />
-                     <InsightCard icon={<Briefcase className="w-4 h-4 text-emerald-400" />} text="Three new frontend internships match your specific niche today." />
-                     <InsightCard icon={<Box className="w-4 h-4 text-purple-400" />} text="Acquiring Docker basics could significantly unlock backend roles." />
-                     <InsightCard icon={<TrendingUp className="w-4 h-4 text-blue-400" />} text="Your latest React project increased your profile's market visibility." />
-                  </div>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -317,7 +354,6 @@ export default function ForgeAssistantPage() {
                   </span>
                )}
             </div>
-            
             {/* Timeline Steps */}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10">
                <div className="absolute left-[23px] top-6 bottom-6 w-[1px] bg-white/[0.08]"></div>
@@ -437,7 +473,7 @@ function TimelineStep({ stage, isLast, formatTime }: { stage: PipelineStage, isL
   );
 }
 
-function DetailedOpportunityCard({ company, role, location, match, desc, logo }: any) {
+function DetailedOpportunityCard({ company, role, location, match, detailed_summary, source_url, logo }: any) {
   return (
     <div className="bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[20px] p-5 flex flex-col hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden group shadow-lg h-full">
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
@@ -460,13 +496,22 @@ function DetailedOpportunityCard({ company, role, location, match, desc, logo }:
         </div>
       </div>
       
-      <p className="text-white/50 text-[12.5px] mb-5 flex-1 leading-relaxed relative z-10 line-clamp-3">
-        {desc}
-      </p>
+      <div className="flex-1 mb-5 relative z-10">
+        <h4 className="text-white/70 text-[11px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1.5"><BrainCircuit className="w-3.5 h-3.5 text-purple-400" /> AI Analysis</h4>
+        <p className="text-white/50 text-[12.5px] leading-relaxed line-clamp-4">
+          {detailed_summary}
+        </p>
+      </div>
       
-      <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[12px] text-[12px] font-medium text-white/90 flex justify-center items-center gap-2 transition-all relative z-10 group-hover:border-white/20 mt-auto">
-        View Full Analysis <ArrowRight className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" />
-      </button>
+      {source_url ? (
+        <a href={source_url} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[12px] text-[12px] font-medium text-white/90 flex justify-center items-center gap-2 transition-all relative z-10 group-hover:border-white/20 mt-auto">
+          View Source <Globe className="w-3.5 h-3.5 text-white/50 group-hover:text-white transition-colors" />
+        </a>
+      ) : (
+        <button disabled className="w-full py-2.5 bg-white/5 border border-white/5 rounded-[12px] text-[12px] font-medium text-white/30 flex justify-center items-center gap-2 mt-auto cursor-not-allowed">
+          No Source Available
+        </button>
+      )}
     </div>
   );
 }
@@ -482,7 +527,15 @@ function InsightCard({ icon, text }: any) {
   );
 }
 
-function MessageBar() {
+function MessageBar({ onDeploy }: { onDeploy: (q: string) => void }) {
+  const [input, setInput] = useState("");
+
+  const handleDeploy = () => {
+    if (input.trim()) {
+      onDeploy(input.trim());
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-4 bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl relative">
       <h3 className="text-white/80 text-[14px] font-medium mb-4">What would you like Forge to help you discover?</h3>
@@ -491,11 +544,17 @@ function MessageBar() {
         <div className="flex-1 bg-black/40 border border-white/10 rounded-[12px] px-4 py-3 flex items-center transition-colors focus-within:border-purple-500/50 shadow-inner">
           <input 
             type="text" 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleDeploy()}
             placeholder="Find remote React internships" 
             className="w-full bg-transparent text-white/90 text-[14px] outline-none placeholder:text-white/30"
           />
         </div>
-        <button className="bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-500 hover:to-purple-300 text-white font-medium text-[13px] px-6 py-3 rounded-[12px] flex justify-center items-center gap-2 transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+        <button 
+          onClick={handleDeploy}
+          className="bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-500 hover:to-purple-300 text-white font-medium text-[13px] px-6 py-3 rounded-[12px] flex justify-center items-center gap-2 transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+        >
           <Send className="w-4 h-4" /> Deploy Mission
         </button>
       </div>

@@ -15,7 +15,7 @@ export default function HoverNav() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <div 
+    <div
       className="hidden md:flex items-center bg-white/[0.02] backdrop-blur-md rounded-full p-1.5 border border-white/[0.04] relative shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]"
       onMouseLeave={() => setHoveredIndex(null)}
     >
@@ -29,7 +29,7 @@ export default function HoverNav() {
           <span className={`relative z-20 transition-colors duration-300 ${hoveredIndex === index ? "text-white" : "text-[#999999] hover:text-[#cccccc]"}`}>
             {item.name}
           </span>
-          
+
           <AnimatePresence>
             {hoveredIndex === index && (
               <motion.div

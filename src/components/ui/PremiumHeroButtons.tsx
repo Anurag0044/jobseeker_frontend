@@ -52,11 +52,10 @@ function GlassPillButton({
       {/* 3. Button Content */}
       <Link
         href={href}
-        className={`relative flex items-center justify-center gap-1.5 px-5 py-2 text-[14px] font-medium transition-colors duration-300 rounded-full z-10 ${dim ? "text-[#999999] hover:text-white" : "text-white/90 hover:text-white"
-          }`}
+        className={`relative flex items-center justify-center gap-1.5 px-5 py-2 text-[14px] font-medium transition-colors duration-300 rounded-full z-10 text-[#a1a1aa] group-hover:text-white group`}
       >
-        {/* Hover glass highlight - identical to Nav */}
-        <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 realistic-glass-pill -z-10" />
+        {/* Permanent glass highlight - matching previous hover state */}
+        <span className="absolute inset-0 rounded-full bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-md border border-white/20 shadow-[0_8px_20px_rgba(255,255,255,0.05),inset_0_1px_1px_rgba(255,255,255,0.4)] -z-10" />
         {children}
       </Link>
     </div>
@@ -78,7 +77,7 @@ export default function PremiumHeroButtons() {
           height="12"
           viewBox="0 0 24 24"
           fill="none"
-          className="relative z-20 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300"
+          className="relative z-20 opacity-100 translate-x-0.5 transition-all duration-300"
         >
           <path
             d="M5 12H19M19 12L12 5M19 12L12 19"
@@ -101,7 +100,7 @@ export default function PremiumHeroButtons() {
           height="11"
           viewBox="0 0 24 24"
           fill="currentColor"
-          className="relative z-20 opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+          className="relative z-20 opacity-100 transition-opacity duration-300"
         >
           <path d="M8 5V19L19 12L8 5Z" />
         </svg>

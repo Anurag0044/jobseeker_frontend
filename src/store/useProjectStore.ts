@@ -51,7 +51,11 @@ interface ProjectStore {
   viewMode: ViewMode;
   sortMethod: SortMethod;
   searchQuery: string;
-  
+  activeTags: string[];
+  activeCategory: string | null;
+  isManageMode: boolean;
+  selectedProjectIds: string[];
+
   // Actions
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateProject: (id: string, data: Partial<Project>) => void;
@@ -60,6 +64,12 @@ interface ProjectStore {
   setViewMode: (mode: ViewMode) => void;
   setSortMethod: (method: SortMethod) => void;
   setSearchQuery: (query: string) => void;
+  setActiveTags: (tags: string[]) => void;
+  setActiveCategory: (category: string | null) => void;
+  setManageMode: (mode: boolean) => void;
+  toggleProjectSelection: (id: string) => void;
+  clearSelection: () => void;
+  bulkDelete: () => void;
 }
 
 const initialProjects: Project[] = [];
@@ -71,6 +81,10 @@ export const useProjectStore = create<ProjectStore>()(
       viewMode: 'grid',
       sortMethod: 'latest',
       searchQuery: '',
+      activeTags: [],
+      activeCategory: null,
+      isManageMode: false,
+      selectedProjectIds: [],
 
       addProject: (projectData) => set((state) => ({
         projects: [
@@ -85,7 +99,7 @@ export const useProjectStore = create<ProjectStore>()(
       })),
 
       updateProject: (id, data) => set((state) => ({
-        projects: state.projects.map((p) => 
+        projects: state.projects.map((p) =>
           p.id === id ? { ...p, ...data, updatedAt: new Date().toISOString() } : p
         )
       })),
@@ -116,6 +130,20 @@ export const useProjectStore = create<ProjectStore>()(
       setViewMode: (mode) => set({ viewMode: mode }),
       setSortMethod: (method) => set({ sortMethod: method }),
       setSearchQuery: (query) => set({ searchQuery: query }),
+      setActiveTags: (tags) => set({ activeTags: tags }),
+      setActiveCategory: (category) => set({ activeCategory: category }),
+      setManageMode: (mode) => set((state) => ({ isManageMode: mode, selectedProjectIds: mode ? state.selectedProjectIds : [] })),
+      toggleProjectSelection: (id) => set((state) => ({
+        selectedProjectIds: state.selectedProjectIds.includes(id)
+          ? state.selectedProjectIds.filter(pid => pid !== id)
+          : [...state.selectedProjectIds, id]
+      })),
+      clearSelection: () => set({ selectedProjectIds: [] }),
+      bulkDelete: () => set((state) => ({
+        projects: state.projects.filter(p => !state.selectedProjectIds.includes(p.id)),
+        selectedProjectIds: [],
+        isManageMode: false,
+      })),
     }),
     {
       name: 'forgex-projects-storage',

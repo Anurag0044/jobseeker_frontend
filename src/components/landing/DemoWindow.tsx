@@ -23,7 +23,7 @@ export default function DemoWindow() {
   }, []);
 
   return (
-    <motion.section 
+    <motion.section
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
@@ -31,7 +31,7 @@ export default function DemoWindow() {
       className="py-xl px-md md:px-xl max-w-[1440px] mx-auto w-full relative z-10"
     >
       <div className="w-full max-w-[64rem] glass-panel rounded-xl overflow-hidden relative shadow-[0_24px_80px_rgba(0,0,0,0.4)] mx-auto border border-white/10 group">
-        
+
         {/* Glow effect */}
         <div className="absolute -top-[100px] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-primary/20 rounded-full blur-[80px] pointer-events-none opacity-50 group-hover:opacity-80 transition-opacity duration-700" />
 
@@ -50,18 +50,18 @@ export default function DemoWindow() {
 
         {/* Window Content */}
         <div className="p-0 grid grid-cols-1 md:grid-cols-4 gap-0 bg-[#0A0A0A]/90 min-h-[450px]">
-          
+
           {/* Sidebar */}
           <div className="col-span-1 hidden md:flex flex-col gap-sm border-r border-white/5 p-lg">
             <div className="font-label-caps text-[11px] text-secondary mb-sm tracking-widest">Active Agents</div>
-            <motion.div 
+            <motion.div
               whileHover={{ x: 4 }}
               className="flex items-center gap-sm p-sm rounded-md bg-[#1A1A1A] border border-primary/20 cursor-pointer"
             >
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="font-mono-label text-[13px] text-on-surface">Job Analyzer</span>
             </motion.div>
-            <motion.div 
+            <motion.div
               whileHover={{ x: 4 }}
               className="flex items-center gap-sm p-sm rounded-md hover:bg-[#1A1A1A]/50 border border-transparent cursor-pointer opacity-60"
             >
@@ -82,54 +82,54 @@ export default function DemoWindow() {
             {/* Terminal Area */}
             <div className="flex-1 bg-[#050505] border border-white/5 rounded-lg p-md relative overflow-hidden font-mono-label text-[13px]">
               <div className="flex flex-col gap-sm text-secondary">
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
                   <span className="text-primary">{">"}</span> Initializing ForgeX Engine v2.1.0...
                 </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 1.2 }}
                 >
                   <span className="text-primary">{">"}</span> Parsing target description (jobs.apple.com/...)
                 </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 2.0 }}
                 >
                   <span className="text-primary">{">"}</span> Extracted 42 key entities. Analyzing gap...
                 </motion.div>
-                
+
                 {/* Animated Progress Bars */}
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 2.5 }}
                   className="mt-4 flex flex-col gap-3"
                 >
                   <div className="flex gap-md items-center">
                     <div className="w-24 text-right text-on-surface-variant">Keywords</div>
                     <div className="h-1 bg-[#1A1A1A] flex-1 rounded overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }} 
-                        animate={{ width: "85%" }} 
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: "85%" }}
                         transition={{ delay: 2.8, duration: 1 }}
-                        className="h-full bg-primary" 
+                        className="h-full bg-primary"
                       />
                     </div>
                   </div>
                   <div className="flex gap-md items-center">
                     <div className="w-24 text-right text-on-surface-variant">Structure</div>
                     <div className="h-1 bg-[#1A1A1A] flex-1 rounded overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }} 
-                        animate={{ width: "94%" }} 
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: "94%" }}
                         transition={{ delay: 3.2, duration: 1 }}
-                        className="h-full bg-primary" 
+                        className="h-full bg-primary"
                       />
                     </div>
                   </div>

@@ -58,7 +58,7 @@ export default function AgentShowcase() {
         </svg>
 
         {/* Nodes */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -69,7 +69,7 @@ export default function AgentShowcase() {
         </motion.div>
 
         <div className="flex flex-col gap-[100px]">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -80,7 +80,7 @@ export default function AgentShowcase() {
             <div className="font-mono-label text-[12px] text-primary uppercase tracking-widest">Agent 01</div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -92,15 +92,15 @@ export default function AgentShowcase() {
           </motion.div>
         </div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.6 }}
           className="w-[150px] h-[100px] glass-panel rounded-xl flex flex-col items-center justify-center border border-white/10"
         >
-           <div className="font-mono-label text-[12px] text-[#a3e635] uppercase tracking-widest mb-1">Output</div>
-           <div className="font-title-md text-[16px] text-on-surface text-center">Optimized<br/>Artifacts</div>
+          <div className="font-mono-label text-[12px] text-[#a3e635] uppercase tracking-widest mb-1">Output</div>
+          <div className="font-title-md text-[16px] text-on-surface text-center">Optimized<br />Artifacts</div>
         </motion.div>
 
       </div>

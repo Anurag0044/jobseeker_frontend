@@ -21,16 +21,13 @@ export default function HeroSection() {
   const opacity = useTransform(scrollYProgress, [0, 1], [1, 0.92]);
 
   return (
-    <section
-      ref={containerRef}
-      className="relative min-h-[90vh] overflow-hidden"
-    >
+    <section className="relative min-h-[90vh] flex flex-col justify-center overflow-hidden">
       {/* 3D Background */}
       <HeroVideoBackground />
 
-
       {/* Content */}
       <motion.div
+        ref={containerRef}
         style={{ scale, opacity }}
         className="relative z-10 w-full px-6 md:px-12 min-h-[90vh] flex flex-col justify-center items-start"
       >

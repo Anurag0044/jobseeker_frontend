@@ -95,7 +95,7 @@ export default function FeatureCards() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg relative">
         {/* Subtle connector line */}
         <div className="hidden lg:block absolute top-24 left-10 right-10 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent -z-10" />
-        
+
         {features.map((f, i) => (
           <FeatureCard key={i} feature={f} index={i} />
         ))}
