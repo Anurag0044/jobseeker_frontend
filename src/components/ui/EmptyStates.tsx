@@ -42,7 +42,7 @@ export default function EmptyStates({ type, onAction, searchQuery }: EmptyStateP
       </div>
       <h3 className="text-[18px] font-semibold text-white mb-1">No results found</h3>
       <p className="text-[14px] text-[#a1a1aa] text-center max-w-sm">
-        We couldn't find anything matching "<span className="text-white font-medium">{searchQuery}</span>". Try adjusting your search or filters.
+        We couldn&apos;t find anything matching &quot;<span className="text-white font-medium">{searchQuery}</span>&quot;. Try adjusting your search or filters.
       </p>
     </motion.div>
   );

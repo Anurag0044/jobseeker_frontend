@@ -2,7 +2,7 @@
 
 @theme {
   --color-primary: #c2c1ff;
-  --color-background: #050505;
+  --color-background: #010108;
   --color-secondary: #c7c6c6;
   --color-surface-container-high: #2a2a2a;
   --color-secondary-container: #484949;
@@ -302,7 +302,7 @@ input:-webkit-autofill:active {
 /* Global Dark Scrollbar Styles */
 html,
 body,
-* {
+.custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #3f3f46 #0a0a0a;
 }
@@ -342,6 +342,25 @@ body,
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #52525b;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  background: transparent !important;
+}
+
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+  display: none !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  /* IE and Edge */
+  scrollbar-width: none !important;
+  /* Firefox */
 }
 
 /* Hyper-Realistic Glass Effect with Animated Hover Edge */
@@ -414,8 +433,13 @@ body,
 
 /* Infinite Scrolling Marquee */
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 @utility animate-marquee {

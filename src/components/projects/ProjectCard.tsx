@@ -2,8 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Project, ViewMode } from '../../store/useProjectStore';
 import { 
-  Eye, Star, ExternalLink, Bookmark, MoreHorizontal, Play, 
-  LayoutGrid, Clock, GitFork, MessageSquare, Image as ImageIcon
+  Eye, Star, ExternalLink, Bookmark, MoreHorizontal, Play, GitFork
 } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { skillsData } from '../../data/skillsData';

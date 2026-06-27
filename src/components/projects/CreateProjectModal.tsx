@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, ChevronRight, ChevronLeft, Link as LinkIcon, Box, Image as ImageIcon, Check } from 'lucide-react';
-import { useProjectStore, Project } from '../../store/useProjectStore';
+import { X, UploadCloud, ChevronRight, ChevronLeft, Link as LinkIcon, Box, Check } from 'lucide-react';
+import { useProjectStore, Project, ProjectStatus } from '../../store/useProjectStore';
 import { skillsData } from '../../data/skillsData';
 
 interface CreateProjectModalProps {
@@ -37,16 +37,18 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   // Reset when opened
   useEffect(() => {
     if (isOpen) {
-      setStep(1);
-      setPreviewImage(null);
-      setFormData({
-        title: '', tagline: '', description: '', category: 'Web App', type: 'SaaS', tags: [],
-        status: 'Draft', featured: false, verified: false,
-        media: { cover: '', thumbnail: '', gallery: [], demoVideo: '' },
-        links: { github: '', demo: '', docs: '', figma: '' },
-        metrics: { views: 0, likes: 0, bookmarks: 0, comments: 0, shares: 0, forks: 0, dailyData: [] },
-        completionPercentage: 0, color: 'from-[#b19cd9]/20 to-[#1A1A1A]'
-      });
+      setTimeout(() => {
+        setStep(1);
+        setPreviewImage(null);
+        setFormData({
+          title: '', tagline: '', description: '', category: 'Web App', type: 'SaaS', tags: [],
+          status: 'Draft', featured: false, verified: false,
+          media: { cover: '', thumbnail: '', gallery: [], demoVideo: '' },
+          links: { github: '', demo: '', docs: '', figma: '' },
+          metrics: { views: 0, likes: 0, bookmarks: 0, comments: 0, shares: 0, forks: 0, dailyData: [] },
+          completionPercentage: 0, color: 'from-[#b19cd9]/20 to-[#1A1A1A]'
+        });
+      }, 0);
     }
   }, [isOpen]);
 
@@ -268,7 +270,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                     {['Draft', 'Published', 'Private'].map((status) => (
                       <button
                         key={status}
-                        onClick={() => setFormData({ ...formData, status: status as any })}
+                        onClick={() => setFormData({ ...formData, status: status as ProjectStatus })}
                         className={`flex-1 py-3 rounded-xl border text-[13px] font-medium transition-all flex items-center justify-center gap-2 ${
                           formData.status === status 
                             ? 'bg-[#b19cd9]/10 border-[#b19cd9] text-white shadow-[0_0_15px_rgba(177,156,217,0.15)]' 

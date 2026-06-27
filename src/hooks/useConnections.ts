@@ -11,7 +11,6 @@ import {
   updateDoc,
   where,
   deleteDoc,
-  getDocs,
 } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../lib/firebase";
@@ -70,8 +69,10 @@ export function useConnections() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || !db) {
-      setAllUsers([]);
-      setLoading(false);
+      setTimeout(() => {
+        setAllUsers([]);
+        setLoading(false);
+      }, 0);
       return;
     }
 
@@ -97,7 +98,7 @@ export function useConnections() {
   // Subscribe to connections where current user is involved
   useEffect(() => {
     if (authLoading || !user || !db) {
-      setConnections([]);
+      setTimeout(() => setConnections([]), 0);
       return;
     }
 

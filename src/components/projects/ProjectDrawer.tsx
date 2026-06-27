@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Eye, Star, Share2, Bookmark, ChevronRight, Activity, Calendar, GitFork } from 'lucide-react';
+import { ExternalLink, Eye, Star, Share2, Bookmark, ChevronRight, Activity, Calendar, GitFork } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { Project } from '../../store/useProjectStore';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -12,27 +12,27 @@ interface ProjectDrawerProps {
   onClose: () => void;
 }
 
+// Custom Recharts Tooltip
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#121212] border border-[#262626] p-3 rounded-lg shadow-xl">
+        <p className="text-[12px] text-[#a1a1aa] mb-1">{label}</p>
+        <p className="text-[14px] font-bold text-[#b19cd9]">
+          {payload[0].value} Views
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function ProjectDrawer({ project, isOpen, onClose }: ProjectDrawerProps) {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Analytics'>('Overview');
 
   if (!project) return null;
 
   const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-  // Custom Recharts Tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#121212] border border-[#262626] p-3 rounded-lg shadow-xl">
-          <p className="text-[12px] text-[#a1a1aa] mb-1">{label}</p>
-          <p className="text-[14px] font-bold text-[#b19cd9]">
-            {payload[0].value} Views
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <AnimatePresence>

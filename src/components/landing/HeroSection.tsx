@@ -6,7 +6,7 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import AICoreScene from "../3d/AICoreScene";
+import HeroVideoBackground from "./HeroVideoBackground";
 import PremiumHeroButtons from "../ui/PremiumHeroButtons";
 import AnimatedHeadline from "./AnimatedHeadline";
 
@@ -26,7 +26,7 @@ export default function HeroSection() {
       className="relative min-h-[90vh] overflow-hidden"
     >
       {/* 3D Background */}
-      <AICoreScene />
+      <HeroVideoBackground />
 
 
       {/* Content */}

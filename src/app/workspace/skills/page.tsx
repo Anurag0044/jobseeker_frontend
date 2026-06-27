@@ -265,7 +265,6 @@ function ProfileCard() {
   const { user } = useUser();
   const displayName = user?.displayName || "Forge User";
   const email = user?.email || "user@example.com";
-  const firstLetter = displayName.charAt(0).toUpperCase();
 
   return (
     <motion.div variants={itemVariants} className="bg-[#121212] border border-[#1e1e1e] rounded-2xl overflow-hidden relative shadow-lg">

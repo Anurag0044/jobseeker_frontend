@@ -8,7 +8,7 @@ export function useUser() {
 
   useEffect(() => {
     if (!auth) {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 0);
       return;
     }
 

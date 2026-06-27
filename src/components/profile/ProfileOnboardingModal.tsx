@@ -26,13 +26,15 @@ export default function ProfileOnboardingModal() {
   useEffect(() => {
     if (!needsOnboarding || !displayProfile) return;
 
-    setDisplayName((current) => current || displayProfile.displayName);
-    setUsername((current) => current || displayProfile.username);
-    setTitle((current) => current || displayProfile.title);
-    setTechStack((current) => current || displayProfile.techStack.join(", "));
-    setSkills((current) => current || displayProfile.skills.join(", "));
-    setLinkedin((current) => current || displayProfile.linkedin);
-    setGithub((current) => current || displayProfile.github);
+    setTimeout(() => {
+      setDisplayName((current) => current || displayProfile.displayName);
+      setUsername((current) => current || displayProfile.username);
+      setTitle((current) => current || displayProfile.title);
+      setTechStack((current) => current || displayProfile.techStack.join(", "));
+      setSkills((current) => current || displayProfile.skills.join(", "));
+      setLinkedin((current) => current || displayProfile.linkedin);
+      setGithub((current) => current || displayProfile.github);
+    }, 0);
   }, [displayProfile, needsOnboarding]);
 
   if (!needsOnboarding || !displayProfile) return null;
