@@ -192,9 +192,17 @@ export default function ProjectsPage() {
               </AnimatePresence>
             </div>
             <div className="flex items-center gap-1 bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-xl p-1">
-              {[{ id: 'grid', icon: LayoutGrid }, { id: 'list', icon: ListIcon }, { id: 'compact', icon: Maximize2 }].map(m => (
-                <button key={m.id} onClick={() => setViewMode(m.id as any)} className={`p-1.5 rounded-lg transition-all ${viewMode === m.id ? 'bg-white/10 text-white' : 'text-[#a1a1aa] hover:text-white hover:bg-white/5'}`}>
-                  <m.icon size={16} />
+              {[
+                { id: 'grid', icon: LayoutGrid },
+                { id: 'list', icon: ListIcon },
+                { id: 'compact', icon: Maximize2 }
+              ].map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => setViewMode(mode.id as any)}
+                  className={`p-1.5 rounded-lg transition-all duration-300 ${viewMode === mode.id ? 'bg-white/10 text-white shadow-sm' : 'text-[#a1a1aa] hover:text-white hover:bg-white/5'}`}
+                >
+                  <mode.icon size={16} />
                 </button>
               ))}
             </div>
