@@ -107,7 +107,8 @@ export default function AgentXPage() {
     };
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/assistant/stream", {
+      const API_URL = process.env.NEXT_PUBLIC_BACK_API_URL || "https://one-forge-x.onrender.com";
+      const res = await fetch(`${API_URL}/api/v1/assistant/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: query, phone_number: "test_user" }),
