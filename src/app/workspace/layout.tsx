@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Bell, ChevronDown, Sun, Crown, ArrowRight,
   UserCircle, Grid2X2, Zap, Send, MessageCircle, Link2,
-  Bookmark, Sparkles, Briefcase, Layers, Users, Settings2, ShieldCheck, Bot, Hexagon, Cpu, Atom, Command, Aperture
+  Bookmark, Sparkles, Briefcase, Layers, Users, Settings2, ShieldCheck, Bot, Hexagon, Cpu, Atom, Command, Aperture, Menu, X
 } from "lucide-react";
 import { useConnections } from "../../hooks/useConnections";
 import ForgeXLogo from "../../components/ui/ForgeXLogo";
@@ -17,6 +17,7 @@ import { useForgeProfile } from "../../hooks/useForgeProfile";
 import SeamlessVideoBackground from "../../components/ui/SeamlessVideoBackground";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   return (
     <AuthGuard>
       <div className="h-screen w-full flex overflow-hidden font-body-sm text-body-sm antialiased text-[#e2e8f0] p-4 gap-4 relative bg-[#010108]">
@@ -39,9 +40,22 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         {/* Subtle noise overlay for texture */}
         <div className="absolute inset-0 opacity-[0.015] pointer-events-none mix-blend-overlay z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
 
-        <Sidebar />
+        {/* Mobile Sidebar Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
+        <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
         <main
-          className="flex-1 flex flex-col h-full relative overflow-hidden rounded-[24px] z-10"
+          className="flex-1 flex flex-col h-full relative overflow-hidden rounded-xl lg:rounded-[24px] z-10 w-full"
           style={{
             background: 'linear-gradient(135deg, rgba(10, 15, 30, 0.5) 0%, rgba(2, 4, 15, 0.7) 100%)',
             borderTop: '1px solid rgba(255, 255, 255, 0.1)',
@@ -51,7 +65,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 0 30px rgba(255,255,255,0.02)',
           }}
         >
-          <TopBar />
+          <TopBar onMenuClick={() => setIsMobileMenuOpen(true)} />
           <div className="flex-1 overflow-y-auto custom-scrollbar relative z-0 min-h-0 flex flex-col">
             {children}
           </div>
@@ -81,7 +95,7 @@ function useSidebarBadges() {
   return { pendingReceivedCount };
 }
 
-function Sidebar() {
+function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = React.useState<string | null>(null);
   const { pendingReceivedCount } = useSidebarBadges();
@@ -103,7 +117,7 @@ function Sidebar() {
 
   return (
     <nav
-      className="w-[280px] h-full flex flex-col shrink-0 rounded-[24px] z-10 py-6 overflow-hidden relative"
+      className={`fixed lg:relative inset-y-4 left-4 lg:inset-auto lg:left-auto w-[280px] h-[calc(100%-2rem)] lg:h-full flex flex-col shrink-0 rounded-[24px] z-50 py-6 overflow-hidden transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-[150%] lg:translate-x-0"}`}
       style={{
         background: 'linear-gradient(160deg, rgba(10, 15, 30, 0.6) 0%, rgba(2, 4, 15, 0.8) 100%)',
         backdropFilter: 'blur(40px) saturate(150%)',
@@ -120,8 +134,14 @@ function Sidebar() {
 
       <div className="flex items-center justify-between px-8 mb-8 mt-1 relative z-10">
         <ForgeXLogo className="scale-95 origin-left drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-        <div className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-white/[0.05] border border-white/[0.05]" style={{ background: 'rgba(15, 23, 42, 0.5)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)' }}>
+        <div className="hidden lg:flex w-7 h-7 rounded-full items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-white/[0.05] border border-white/[0.05]" style={{ background: 'rgba(15, 23, 42, 0.5)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)' }}>
           <ChevronDown size={14} className="rotate-90 text-slate-400" />
+        </div>
+        <div 
+          onClick={() => setIsOpen(false)}
+          className="flex lg:hidden w-8 h-8 rounded-full items-center justify-center cursor-pointer transition-all duration-300 hover:bg-white/[0.05] border border-white/[0.05] text-slate-400"
+        >
+          <X size={18} />
         </div>
       </div>
 
@@ -138,6 +158,7 @@ function Sidebar() {
               iconVariants={item.iconVariants}
               isHovered={hoveredHref === item.href}
               onHover={() => setHoveredHref(item.href)}
+              onClick={() => setIsOpen(false)}
             />
           ))}
         </div>
@@ -187,9 +208,10 @@ interface NavItemProps {
   iconVariants?: any;
   isHovered: boolean;
   onHover: () => void;
+  onClick?: () => void;
 }
 
-function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, onHover }: NavItemProps) {
+function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, onHover, onClick }: NavItemProps) {
   const [isClicked, setIsClicked] = React.useState(false);
 
   const handleClick = () => {
@@ -201,7 +223,10 @@ function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, on
     <Link
       href={href}
       onMouseEnter={onHover}
-      onClick={handleClick}
+      onClick={(e) => {
+        handleClick();
+        if (onClick) onClick();
+      }}
       scroll={false}
       className={`relative flex items-center justify-between p-2 px-3.5 rounded-full transition-all duration-300 group overflow-hidden ${active
         ? "text-white"
@@ -284,7 +309,7 @@ function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, on
 
 /* ─── TopBar ───────────────────────────────────────────────── */
 
-function TopBar() {
+function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { displayProfile } = useForgeProfile();
 
   const displayName = displayProfile?.displayName || "Forge User";
@@ -299,6 +324,13 @@ function TopBar() {
       }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none rounded-t-[24px]" />
+
+      <button 
+        onClick={onMenuClick}
+        className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05] mr-2"
+      >
+        <Menu size={20} />
+      </button>
 
       <div className="hidden md:block flex-1" />
 

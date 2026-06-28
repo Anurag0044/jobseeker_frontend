@@ -121,10 +121,10 @@ export default function MessagesPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="flex-1 w-full min-h-0 p-4 flex gap-4 overflow-hidden"
+      className="flex-1 w-full min-h-0 p-4 flex flex-col md:flex-row gap-4 overflow-hidden"
     >
       {/* ─── LEFT SIDEBAR (CONVERSATIONS) ─── */}
-      <motion.div variants={itemVariants} className={`w-[280px] lg:w-[320px] shrink-0 flex flex-col ${glassPanelClass}`}>
+      <motion.div variants={itemVariants} className={`w-full md:w-[280px] lg:w-[320px] shrink-0 flex-col h-full ${glassPanelClass} ${selectedUser ? "hidden md:flex" : "flex"}`}>
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
         
         <div className="p-6 pb-4 flex items-center justify-between relative z-10">
@@ -247,13 +247,16 @@ export default function MessagesPage() {
         </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="flex-1 flex flex-col min-w-[300px] bg-[#0A0A0A] rounded-2xl lg:rounded-[24px] border border-white/[0.02]">
+      <motion.div variants={itemVariants} className={`flex-1 flex-col min-w-0 md:min-w-[300px] bg-[#0A0A0A] rounded-2xl lg:rounded-[24px] border border-white/[0.02] h-full ${!selectedUser ? "hidden md:flex" : "flex"}`}>
         {selectedUser ? (
           <>
             {/* Chat Header */}
             <div className="h-[72px] flex items-center justify-between px-6 bg-white/[0.02] border-b border-white/[0.05] shrink-0 z-10 backdrop-blur-md">
               <div className="flex items-center gap-4">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-bold overflow-hidden ring-1 ring-white/10 shadow-sm relative">
+                <button onClick={() => setSelectedUserId("")} className="md:hidden w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center text-slate-300 hover:text-white mr-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-bold overflow-hidden ring-1 ring-white/10 shadow-sm relative shrink-0">
                   {selectedUser.photoURL ? (
                     <img src={selectedUser.photoURL} alt={selectedUser.displayName} className="h-full w-full object-cover" />
                   ) : (
@@ -270,13 +273,13 @@ export default function MessagesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2.5">
-                <button className="px-4 py-2 bg-white/[0.03] border border-white/[0.05] text-white text-[13px] font-medium rounded-xl hover:bg-white/[0.08] transition-all flex items-center gap-2 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] active:scale-95">
+                <button className="hidden sm:flex px-4 py-2 bg-white/[0.03] border border-white/[0.05] text-white text-[13px] font-medium rounded-xl hover:bg-white/[0.08] transition-all items-center gap-2 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] active:scale-95">
                   <UserPlus size={14} className="text-indigo-300" /> View Profile
                 </button>
-                <button className="px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-100 text-[13px] font-medium rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] active:scale-95">
+                <button className="hidden sm:flex px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-100 text-[13px] font-medium rounded-xl hover:bg-indigo-500/20 transition-all items-center gap-2 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] active:scale-95">
                   <Calendar size={14} className="text-indigo-400" /> Meet
                 </button>
-                <button className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all active:scale-95">
+                <button className="w-9 h-9 shrink-0 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all active:scale-95">
                   <MoreHorizontal size={16} />
                 </button>
               </div>
@@ -303,7 +306,7 @@ export default function MessagesPage() {
                       className={outgoing ? "flex flex-col items-end gap-1.5 max-w-[65%] self-end" : "flex items-end gap-3 max-w-[65%]"}
                     >
                       {!outgoing && (
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold overflow-hidden ring-1 ring-white/10 shrink-0 mb-5">
+                        <div className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center text-[10px] font-bold overflow-hidden ring-1 ring-white/10 shrink-0 mb-5">
                           {selectedUser.photoURL ? (
                             <img src={selectedUser.photoURL} alt={selectedUser.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -314,7 +317,7 @@ export default function MessagesPage() {
                         </div>
                       )}
                       
-                      <div className={`flex flex-col ${outgoing ? "items-end" : "items-start"}`}>
+                      <div className={`flex flex-col max-w-full ${outgoing ? "items-end" : "items-start"}`}>
                         <div 
                           className={`px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm backdrop-blur-md ${
                             outgoing 

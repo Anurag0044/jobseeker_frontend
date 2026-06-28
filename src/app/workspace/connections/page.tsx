@@ -109,7 +109,7 @@ export default function ConnectionsPage() {
         className="max-w-[1100px] mx-auto flex flex-col gap-8"
       >
         {/* ── Header ─────────────────────────────────────────── */}
-        <motion.div variants={itemVariants} className="flex items-start justify-between">
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-[32px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 tracking-tight mb-1 drop-shadow-sm">
               Connections
@@ -140,7 +140,7 @@ export default function ConnectionsPage() {
         {/* ── Search + Tabs ───────────────────────────────────── */}
         <motion.div variants={itemVariants} className="flex flex-col gap-6">
           {/* Search */}
-          <div className="h-12 bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-2xl flex items-center px-4 max-w-[420px] focus-within:border-indigo-500/30 focus-within:bg-white/[0.05] transition-all group">
+          <div className="h-12 bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-2xl flex items-center px-4 max-w-full md:max-w-[420px] focus-within:border-indigo-500/30 focus-within:bg-white/[0.05] transition-all group">
             <Search size={16} className="text-slate-400 mr-3 group-focus-within:text-indigo-400 transition-colors" />
             <input
               type="text"

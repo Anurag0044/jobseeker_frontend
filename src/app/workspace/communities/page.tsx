@@ -67,9 +67,9 @@ export default function CommunitiesPage() {
   const discoverCommunities = communities.filter((c) => !joinedIds.has(c.id));
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full overflow-hidden w-full">
       {/* ── Left Sidebar ─────────────────────────────── */}
-      <div className="w-64 shrink-0 flex flex-col border-r border-[#1e1e1e] bg-[#080808] overflow-y-auto custom-scrollbar">
+      <div className={`w-full md:w-64 shrink-0 flex-col border-r border-[#1e1e1e] bg-[#080808] overflow-y-auto custom-scrollbar h-full ${selectedId ? "hidden md:flex" : "flex"}`}>
         {/* Header */}
         <div className="p-4 border-b border-[#1e1e1e] flex items-center justify-between">
           <span className="text-[13px] font-semibold text-white">Communities</span>
@@ -141,10 +141,13 @@ export default function CommunitiesPage() {
 
       {/* ── Main Panel ───────────────────────────────── */}
       {selected ? (
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className={`flex-1 flex-col overflow-hidden min-w-0 h-full ${!selectedId ? "hidden md:flex" : "flex"}`}>
           {/* Channel header */}
           <div className="h-14 shrink-0 flex items-center justify-between px-5 border-b border-[#1e1e1e] bg-[#0A0A0A]">
             <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => setSelectedId(null)} className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.05] text-slate-300 hover:text-white shrink-0">
+                <ChevronRight size={16} className="rotate-180" />
+              </button>
               <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] border border-[#262626] overflow-hidden shrink-0 flex items-center justify-center">
                 {selected.bannerUrl ? (
                   <img src={selected.bannerUrl} alt={selected.name} className="w-full h-full object-cover" />
@@ -159,7 +162,7 @@ export default function CommunitiesPage() {
             </div>
 
             {/* Tab pills */}
-            <div className="flex items-center gap-1 bg-[#121212] border border-[#1e1e1e] rounded-lg p-1">
+            <div className="hidden sm:flex items-center gap-1 bg-[#121212] border border-[#1e1e1e] rounded-lg p-1">
               {(isMember ? ["chat", "overview", "members"] : ["overview"]).map((tab) => (
                 <button
                   key={tab}
@@ -185,7 +188,7 @@ export default function CommunitiesPage() {
                   {isOwner && (
                     <button
                       onClick={() => setConfirmDeleteId(selected.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
                     >
                       <Trash2 size={11} /> Delete
                     </button>
@@ -277,7 +280,7 @@ export default function CommunitiesPage() {
         </div>
       ) : (
         /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-[#0A0A0A]">
+        <div className={`flex-1 flex-col items-center justify-center text-center px-8 bg-[#0A0A0A] ${!selectedId ? "hidden md:flex" : "flex"}`}>
           <div className="w-20 h-20 rounded-2xl bg-[#121212] border border-[#1e1e1e] flex items-center justify-center mb-4">
             <Hash size={36} className="text-[#3f3f46]" />
           </div>

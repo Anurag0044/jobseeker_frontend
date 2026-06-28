@@ -225,8 +225,8 @@ export default function ProjectsPage() {
                 <FolderGit2 size={32} className="text-[#a1a1aa]" />
               </div>
               <h2 className="text-[22px] font-bold text-white mb-3">Build something extraordinary.</h2>
-              <div className="w-[400px]">
-                <p className="text-[15px] text-[#a1a1aa] text-center mb-8 leading-relaxed">
+              <div className="w-full max-w-[400px]">
+                <p className="text-[15px] text-[#a1a1aa] text-center mb-8 leading-relaxed px-4">
                   {searchQuery || activeTags.length > 0 ? "No projects match your search." : "Your project showcase is empty. Create your first project."}
                 </p>
               </div>
