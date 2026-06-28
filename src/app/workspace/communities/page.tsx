@@ -309,7 +309,7 @@ export default function CommunitiesPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
+              className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-[384px] w-full mx-4 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[16px] font-semibold text-white">Delete Community?</h3>

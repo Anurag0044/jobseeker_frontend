@@ -85,13 +85,16 @@ function Sidebar() {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = React.useState<string | null>(null);
   const { pendingReceivedCount } = useSidebarBadges();
+  const { displayProfile } = useForgeProfile();
 
-  const navItems = navItemsBase.map((item) => {
-    if (item.href === "/workspace/connections" && pendingReceivedCount > 0) {
-      return { ...item, badge: String(pendingReceivedCount) };
-    }
-    return item;
-  });
+  const navItems = navItemsBase
+    .filter((item) => item.href !== "/admin/users" || displayProfile?.role === "admin")
+    .map((item) => {
+      if (item.href === "/workspace/connections" && pendingReceivedCount > 0) {
+        return { ...item, badge: String(pendingReceivedCount) };
+      }
+      return item;
+    });
 
   const isActive = (href: string) => {
     if (href === "/workspace") return pathname === "/workspace";
@@ -181,7 +184,7 @@ interface NavItemProps {
   label: string;
   active?: boolean;
   badge?: string;
-  iconVariants?: Record<string, unknown>;
+  iconVariants?: any;
   isHovered: boolean;
   onHover: () => void;
 }

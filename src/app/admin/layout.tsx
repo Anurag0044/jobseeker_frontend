@@ -9,8 +9,28 @@ import {
   Search, Sun, Bell, MessageSquare, ChevronLeft, ChevronRight, ActivitySquare
 } from "lucide-react";
 import ForgeXLogo from "@/components/ui/ForgeXLogo";
+import { useForgeProfile } from "@/hooks/useForgeProfile";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { displayProfile, loading } = useForgeProfile();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && displayProfile?.role !== "admin") {
+      router.replace("/workspace");
+    }
+  }, [displayProfile, loading, router]);
+
+  if (loading || displayProfile?.role !== "admin") {
+    return (
+      <div className="flex h-screen w-full bg-[#050505] items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#5e5ce6] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full bg-[#050505] overflow-hidden">
       {/* SIDEBAR */}

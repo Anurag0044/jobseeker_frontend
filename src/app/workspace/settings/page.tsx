@@ -43,7 +43,7 @@ export default function SettingsPage() {
               <Sparkles size={28} className="text-[#b19cd9]" />
             </div>
             <h2 className="text-[18px] font-semibold text-white mb-2">More Settings Soon</h2>
-            <p className="text-[13px] text-[#a1a1aa] text-center max-w-sm">
+            <p className="text-[13px] text-[#a1a1aa] text-center max-w-[384px]">
               Profile preferences, notification controls, and assistant memory settings are on the way.
             </p>
           </div>

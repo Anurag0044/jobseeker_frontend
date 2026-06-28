@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Eye, Star, Share2, Bookmark, ChevronRight, Activity, Calendar, GitFork } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
-import { Project } from '../../store/useProjectStore';
+import { type FirestoreProject } from '../../hooks/useFirestoreProjects';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { skillsData } from '../../data/skillsData';
 
 interface ProjectDrawerProps {
-  project: Project | null;
+  project: FirestoreProject | any | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
 // Custom Recharts Tooltip
-const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#121212] border border-[#262626] p-3 rounded-lg shadow-xl">
@@ -134,7 +134,7 @@ export default function ProjectDrawer({ project, isOpen, onClose }: ProjectDrawe
                         <div>
                           <h3 className="text-[16px] font-semibold text-white mb-3">Technologies</h3>
                           <div className="flex flex-wrap gap-2">
-                            {project.tags.map(tag => {
+                            {project.tags.map((tag: string) => {
                               const skill = skillsData.find(s => s.name.toLowerCase() === tag.toLowerCase());
                               return (
                                 <div key={tag} className="flex items-center gap-2 px-3 py-2 bg-[#121212] border border-[#262626] rounded-lg">

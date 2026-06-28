@@ -124,7 +124,7 @@ export default function MessagesPage() {
       className="flex-1 w-full min-h-0 p-4 flex gap-4 overflow-hidden"
     >
       {/* ─── LEFT SIDEBAR (CONVERSATIONS) ─── */}
-      <motion.div variants={itemVariants} className={`w-[340px] shrink-0 flex flex-col ${glassPanelClass}`}>
+      <motion.div variants={itemVariants} className={`w-[280px] lg:w-[320px] shrink-0 flex flex-col ${glassPanelClass}`}>
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
         
         <div className="p-6 pb-4 flex items-center justify-between relative z-10">
@@ -247,7 +247,7 @@ export default function MessagesPage() {
         </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="flex-1 flex flex-col bg-[#0A0A0A]">
+      <motion.div variants={itemVariants} className="flex-1 flex flex-col min-w-[300px] bg-[#0A0A0A] rounded-2xl lg:rounded-[24px] border border-white/[0.02]">
         {selectedUser ? (
           <>
             {/* Chat Header */}
@@ -284,7 +284,7 @@ export default function MessagesPage() {
 
             <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar flex flex-col gap-4">
               {messages.length === 0 ? (
-                <div className="m-auto max-w-sm text-center">
+                <div className="m-auto w-full max-w-[384px] text-center">
                   <p className="text-[14px] font-medium text-white mb-1">No messages yet</p>
                   <p className="text-[12px] text-[#71717a]">Send the first message to create a realtime Firestore chat.</p>
                 </div>
@@ -396,7 +396,7 @@ export default function MessagesPage() {
             </div>
           </>
         ) : (
-          <div className="m-auto flex flex-col items-center justify-center max-w-sm text-center px-6">
+          <div className="m-auto flex flex-col items-center justify-center max-w-[384px] text-center px-6">
             <div className="relative mb-6">
               <div className="absolute inset-0 bg-indigo-500/20 blur-[30px] rounded-full" />
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/[0.1] flex items-center justify-center backdrop-blur-md relative z-10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
@@ -418,7 +418,7 @@ export default function MessagesPage() {
       </motion.div>
 
       {/* ─── RIGHT SIDEBAR (CONTEXT) ─── */}
-      <motion.div variants={itemVariants} className={`w-[300px] shrink-0 flex flex-col ${glassPanelClass} overflow-y-auto custom-scrollbar`}>
+      <motion.div variants={itemVariants} className={`hidden xl:flex w-[280px] shrink-0 flex-col ${glassPanelClass} overflow-y-auto custom-scrollbar`}>
         <div className="p-6 flex flex-col gap-6 relative z-10">
           <div>
             <h4 className="text-[11px] font-bold text-indigo-400/80 uppercase tracking-widest mb-4">

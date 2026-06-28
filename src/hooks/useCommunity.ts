@@ -260,7 +260,7 @@ export function useCommunity() {
             await deleteDoc(d.ref);
             // Remove from member's user doc
             try {
-              await updateDoc(doc(db, "users", memberId), {
+              await updateDoc(doc(db!, "users", memberId), {
                 joinedCommunities: arrayRemove(communityId),
               });
             } catch {

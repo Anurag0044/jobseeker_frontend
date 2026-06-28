@@ -165,7 +165,7 @@ function PortfolioInner() {
               <FolderGit2 size={28} className="text-[#b19cd9]" />
             </div>
             <h2 className="text-[18px] font-semibold text-white mb-2">No Projects Yet</h2>
-            <p className="text-[13px] text-[#a1a1aa] text-center max-w-sm">
+            <p className="text-[13px] text-[#a1a1aa] text-center max-w-[384px]">
               {uid ? "This user hasn't published any projects yet." : "Create your first project from the Projects section."}
             </p>
           </div>

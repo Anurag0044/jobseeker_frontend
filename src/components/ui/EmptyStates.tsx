@@ -19,7 +19,7 @@ export default function EmptyStates({ type, onAction, searchQuery }: EmptyStateP
           <FolderGit2 size={32} className="text-[#b19cd9]" />
         </div>
         <h3 className="text-[20px] font-semibold text-white mb-2">Build something extraordinary.</h3>
-        <p className="text-[14px] text-[#a1a1aa] mb-8 text-center max-w-sm">
+        <p className="text-[14px] text-[#a1a1aa] mb-8 text-center max-w-[384px]">
           Your project showcase is currently empty. Start building your portfolio and share your best work with the world.
         </p>
         <button 
@@ -41,7 +41,7 @@ export default function EmptyStates({ type, onAction, searchQuery }: EmptyStateP
         <SearchX size={24} className="text-[#71717a]" />
       </div>
       <h3 className="text-[18px] font-semibold text-white mb-1">No results found</h3>
-      <p className="text-[14px] text-[#a1a1aa] text-center max-w-sm">
+      <p className="text-[14px] text-[#a1a1aa] text-center max-w-[384px]">
         We couldn&apos;t find anything matching &quot;<span className="text-white font-medium">{searchQuery}</span>&quot;. Try adjusting your search or filters.
       </p>
     </motion.div>

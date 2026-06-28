@@ -108,7 +108,7 @@ export default function ProfileOnboardingModal() {
             </label>
             <div>
               <h3 className="text-[15px] font-semibold text-white mb-1">Display picture</h3>
-              <p className="text-[12px] text-[#71717a] max-w-md">
+              <p className="text-[12px] text-[#71717a] max-w-[448px]">
                 Upload a profile image. It will be stored in Cloudinary and linked to your Firestore profile.
               </p>
             </div>

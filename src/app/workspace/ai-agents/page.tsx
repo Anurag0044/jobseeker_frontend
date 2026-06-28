@@ -146,7 +146,7 @@ export default function AgentXPage() {
                   let urls: string[] = [];
                   if (data.output) {
                     const urlRegex = /(https?:\/\/[^\s"']+)/g;
-                    const matches = data.output.match(urlRegex);
+                    const matches = (data.output as string).match(urlRegex);
                     if (matches) {
                       urls = [...new Set(matches)].slice(0, 3);
                     }

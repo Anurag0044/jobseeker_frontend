@@ -217,7 +217,7 @@ export default function AdminUsersPage() {
 
 /* ─── Helpers ────────────────────────────────────────────── */
 
-function StatCard({ title, value, change, trend, icon, color, bg }: Record<string, unknown>) {
+function StatCard({ title, value, change, trend, icon, color, bg }: any) {
   return (
     <div className="bg-[#121212] border border-[#1e1e1e] rounded-xl p-5 flex flex-col relative overflow-hidden">
       <div className={`absolute top-4 right-4 w-10 h-10 rounded-lg flex items-center justify-center ${color} ${bg}`}>
@@ -243,7 +243,7 @@ function FilterDropdown({ label }: { label: string }) {
   );
 }
 
-function TableRow({ selected, name, email, role, status, date, active }: Record<string, unknown>) {
+function TableRow({ selected, name, email, role, status, date, active }: any) {
   return (
     <tr className={`border-b border-[#1e1e1e] group transition-colors ${selected ? "bg-[#1e1a2e]/30" : "hover:bg-[#121212]"}`}>
       <td className="py-3 pl-6 pr-4">
@@ -282,7 +282,7 @@ function TableRow({ selected, name, email, role, status, date, active }: Record<
   );
 }
 
-function PageBtn({ active, icon, children }: Record<string, unknown>) {
+function PageBtn({ active, icon, children }: any) {
   return (
     <button className={`w-8 h-8 flex items-center justify-center rounded-md text-[12px] font-medium transition-colors ${
       active 
@@ -294,7 +294,7 @@ function PageBtn({ active, icon, children }: Record<string, unknown>) {
   );
 }
 
-function Section({ title, children }: Record<string, unknown>) {
+function Section({ title, children }: any) {
   return (
     <div className="flex flex-col">
       <h3 className="text-[14px] font-semibold text-white mb-4">{title}</h3>
@@ -303,7 +303,7 @@ function Section({ title, children }: Record<string, unknown>) {
   );
 }
 
-function DetailRow({ label, value, icon, color }: Record<string, unknown>) {
+function DetailRow({ label, value, icon, color }: any) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-[#1e1e1e] last:border-0">
       <span className="text-[12px] text-[#71717a]">{label}</span>
@@ -315,7 +315,7 @@ function DetailRow({ label, value, icon, color }: Record<string, unknown>) {
   );
 }
 
-function ActionBtn({ icon, text, color, hover, full }: Record<string, unknown>) {
+function ActionBtn({ icon, text, color, hover, full }: any) {
   return (
     <button className={`flex items-center gap-2 px-3 py-2.5 bg-[#121212] border border-[#262626] rounded-lg transition-colors ${color || "text-[#a1a1aa] hover:text-white"} ${hover || "hover:bg-[#1A1A1A] hover:border-[#3f3f46]"} ${full ? "w-full justify-center" : "w-full"}`}>
       {icon} <span className="text-[12px] font-medium">{text}</span>
@@ -323,7 +323,7 @@ function ActionBtn({ icon, text, color, hover, full }: Record<string, unknown>) 
   );
 }
 
-function ActivityRow({ icon, title, time }: Record<string, unknown>) {
+function ActivityRow({ icon, title, time }: any) {
   return (
     <div className="flex gap-3">
       <div className="mt-0.5">{icon}</div>

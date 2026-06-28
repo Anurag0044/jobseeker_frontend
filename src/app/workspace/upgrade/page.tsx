@@ -23,7 +23,7 @@ export default function UpgradePage() {
             <Sparkles size={28} className="text-[#b19cd9]" />
           </div>
           <h2 className="text-[18px] font-semibold text-white mb-2">Coming Soon</h2>
-          <p className="text-[13px] text-[#a1a1aa] text-center max-w-sm">
+          <p className="text-[13px] text-[#a1a1aa] text-center max-w-[384px]">
             We&apos;re building something amazing for Upgrade. Stay tuned for updates.
           </p>
         </div>

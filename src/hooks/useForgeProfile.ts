@@ -23,6 +23,7 @@ export interface ForgeProfile {
   onboardingComplete: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
+  role?: "admin" | "user";
 }
 
 export type ForgeProfileInput = Partial<
@@ -149,6 +150,7 @@ export function useForgeProfile() {
       techStack: ["React", "TypeScript", "Next.js"],
       skills: ["Frontend Development", "AI Agents", "Project Building"],
       onboardingComplete: false,
+      role: "user",
     };
   }, [user]);
 
@@ -191,6 +193,7 @@ export function useForgeProfile() {
         techStack: normalized.techStack?.length ? normalized.techStack : profile?.techStack || [],
         skills: normalized.skills?.length ? normalized.skills : profile?.skills || [],
         onboardingComplete: markComplete ? true : profile?.onboardingComplete || false,
+        role: profile?.role || "user",
         updatedAt: serverTimestamp(),
       };
 
