@@ -186,6 +186,8 @@ function ProfileHeader() {
     linkedin: displayProfile?.linkedin || "",
     twitter: "",
     photoURL: displayProfile?.photoURL || "",
+    techStack: displayProfile?.techStack || [],
+    skills: displayProfile?.skills || [],
   };
 
   const displayName = profileData.displayName;
@@ -214,6 +216,8 @@ function ProfileHeader() {
             github: data.github,
             linkedin: data.linkedin,
             photoURL: data.photoURL,
+            techStack: data.techStack,
+            skills: data.skills,
           })
         }
       />

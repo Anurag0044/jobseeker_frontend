@@ -11,12 +11,14 @@ function GlassPillButton({
   dim = false,
   spinDuration = "3s",
   spinColor = "rgba(255,255,255,0.6)",
+  target,
 }: {
   href: string;
   children: React.ReactNode;
   dim?: boolean;
   spinDuration?: string;
   spinColor?: string;
+  target?: string;
 }) {
   return (
     <div className="relative flex items-center bg-black/30 backdrop-blur-md rounded-full p-[6px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.05),0_8px_16px_rgba(0,0,0,0.4)] group overflow-hidden">
@@ -52,6 +54,8 @@ function GlassPillButton({
       {/* 3. Button Content */}
       <Link
         href={href}
+        target={target}
+        rel={target === "_blank" ? "noopener noreferrer" : undefined}
         className={`relative flex items-center justify-center gap-1.5 px-5 py-2 text-[14px] font-medium transition-colors duration-300 rounded-full z-10 text-[#a1a1aa] group-hover:text-white group`}
       >
         {/* Permanent glass highlight - matching previous hover state */}
@@ -91,7 +95,8 @@ export default function PremiumHeroButtons() {
 
       {/* Secondary — View Demo */}
       <GlassPillButton
-        href="#"
+        href="https://www.youtube.com/watch?v=QXtXrgea1lE"
+        target="_blank"
         spinColor="rgba(255,255,255,0.7)"
         spinDuration="4s"
       >
