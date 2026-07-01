@@ -15,6 +15,7 @@ import AuthGuard from "../../components/auth/AuthGuard";
 import ProfileOnboardingModal from "../../components/profile/ProfileOnboardingModal";
 import { useForgeProfile } from "../../hooks/useForgeProfile";
 import SeamlessVideoBackground from "../../components/ui/SeamlessVideoBackground";
+import PremiumLoader from "../../components/ui/PremiumLoader";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -147,58 +148,60 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   }, []);
   return (
     <AuthGuard>
-      <div className="h-screen w-full flex overflow-hidden font-body-sm text-body-sm antialiased text-[#e2e8f0] p-4 gap-4 relative bg-[#010108]">
-        {/* Premium AI Particle Wave Video Background (Seamless Crossfade) */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <SeamlessVideoBackground
-            src="/videos/particle-wave.mp4"
-            className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 opacity-[0.85] mix-blend-screen"
-          />
-          {/* Subtle gradient overlay to integrate video seamlessly and maintain readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#010108]/70 via-[#010108]/20 to-[#010108]/70" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#010108]/70 via-transparent to-[#010108]/70" />
-        </div>
-
-        {/* Ambient glowing cosmic orbs - toned down slightly to blend with video */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/10 blur-[140px] pointer-events-none mix-blend-screen z-0" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/10 blur-[140px] pointer-events-none mix-blend-screen z-0" />
-        <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2 mix-blend-screen z-0" />
-
-        {/* Subtle noise overlay for texture */}
-        <div className="absolute inset-0 opacity-[0.015] pointer-events-none mix-blend-overlay z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
-
-        {/* Mobile Sidebar Overlay */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+      <PremiumLoader>
+        <div className="h-screen w-full flex overflow-hidden font-body-sm text-body-sm antialiased text-[#e2e8f0] p-4 gap-4 relative bg-[#010108]">
+          {/* Premium AI Particle Wave Video Background (Seamless Crossfade) */}
+          <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <SeamlessVideoBackground
+              src="/videos/particle-wave.mp4"
+              className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 opacity-[0.85] mix-blend-screen"
             />
-          )}
-        </AnimatePresence>
-
-        <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
-        <main
-          className="flex-1 flex flex-col h-full relative overflow-hidden rounded-xl lg:rounded-[24px] z-10 w-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(10, 15, 30, 0.5) 0%, rgba(2, 4, 15, 0.7) 100%)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            borderLeft: '1px solid rgba(255, 255, 255, 0.05)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.02)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.02)',
-            boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 0 30px rgba(255,255,255,0.02)',
-          }}
-        >
-          <TopBar onMenuClick={() => setIsMobileMenuOpen(true)} />
-          <div className="flex-1 overflow-y-auto custom-scrollbar relative z-0 min-h-0 flex flex-col">
-            {children}
+            {/* Subtle gradient overlay to integrate video seamlessly and maintain readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#010108]/70 via-[#010108]/20 to-[#010108]/70" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#010108]/70 via-transparent to-[#010108]/70" />
           </div>
-        </main>
-        <ProfileOnboardingModal />
-      </div>
+
+          {/* Ambient glowing cosmic orbs - toned down slightly to blend with video */}
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/10 blur-[140px] pointer-events-none mix-blend-screen z-0" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/10 blur-[140px] pointer-events-none mix-blend-screen z-0" />
+          <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-blue-500/5 blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2 mix-blend-screen z-0" />
+
+          {/* Subtle noise overlay for texture */}
+          <div className="absolute inset-0 opacity-[0.015] pointer-events-none mix-blend-overlay z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+
+          {/* Mobile Sidebar Overlay */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              />
+            )}
+          </AnimatePresence>
+
+          <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
+          <main
+            className="flex-1 flex flex-col h-full relative overflow-hidden rounded-xl lg:rounded-[24px] z-10 w-full"
+            style={{
+              background: 'linear-gradient(135deg, rgba(10, 15, 30, 0.5) 0%, rgba(2, 4, 15, 0.7) 100%)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.02)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.02)',
+              boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 0 30px rgba(255,255,255,0.02)',
+            }}
+          >
+            <TopBar onMenuClick={() => setIsMobileMenuOpen(true)} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative z-0 min-h-0 flex flex-col">
+              {children}
+            </div>
+          </main>
+          <ProfileOnboardingModal />
+        </div>
+      </PremiumLoader>
     </AuthGuard>
   );
 }
@@ -380,7 +383,7 @@ function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, on
         if (onClick) onClick();
       }}
       scroll={false}
-      className={`relative flex items-center transition-all duration-350 ease-[0.16,1,0.3,1] group overflow-hidden ${active
+      className={`relative flex items-center transition-all duration-350 ease-[0.16,1,0.3,1] group overflow-hidden rounded-full ${active
         ? "text-white"
         : "text-slate-400 hover:text-white"
         } ${isCollapsed ? "justify-center p-2.5 w-11 h-11 mx-auto" : "justify-between p-2 px-3.5 w-full"}`}
@@ -437,7 +440,7 @@ function NavItem({ href, icon, label, active, badge, iconVariants, isHovered, on
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-4 relative z-10 pl-1 shrink-0">
+      <div className={`flex items-center relative z-10 shrink-0 transition-all duration-350 ease-[0.16,1,0.3,1] ${isCollapsed ? "gap-0 pl-0" : "gap-4 pl-1"}`}>
         <motion.span
           variants={iconVariants}
           animate={isClicked ? "clicked" : "idle"}

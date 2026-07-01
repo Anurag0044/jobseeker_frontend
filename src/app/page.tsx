@@ -50,7 +50,7 @@ export default function LandingPage() {
         <footer className="border-t border-white/5 py-xl mt-xxl relative z-10 bg-black">
           <div className="max-w-[1440px] mx-auto px-md md:px-xl flex flex-col md:flex-row justify-between items-center gap-md">
             <div className="font-title-md text-[14px] text-secondary">
-              © 2024 ForgeX. Built for the AI era.
+              © 2026 ForgeX. Built for the AI era.
             </div>
             <div className="flex gap-md">
               <Link className="text-[13px] text-secondary hover:text-white transition-colors" href="#">Privacy</Link>
