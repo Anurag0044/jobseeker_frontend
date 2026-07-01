@@ -10,7 +10,6 @@ import {
 import { useForgeProfile } from "../../../hooks/useForgeProfile";
 import { useProjectStore } from "../../../store/useProjectStore";
 import { useFirestoreProjects } from "../../../hooks/useFirestoreProjects";
-import ProfileContextStrip from "../../../components/profile/ProfileContextStrip";
 import ProjectCard from "../../../components/projects/ProjectCard";
 import CreateProjectModal from "../../../components/projects/CreateProjectModal";
 import { skillsData } from "../../../data/skillsData";
@@ -118,8 +117,6 @@ export default function ProjectsPage() {
             </button>
           </div>
         </div>
-
-        <ProfileContextStrip label="Projects Context" />
 
         {/* Control Bar */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full flex flex-col gap-4">

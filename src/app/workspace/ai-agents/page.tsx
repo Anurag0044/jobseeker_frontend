@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,8 +9,10 @@ import {
   Sparkles, Search, FileText, Target, Send, Check, Rocket,
   Briefcase, Box, TrendingUp, MapPin, ArrowRight, BrainCircuit,
   Wrench, GitCompare, Radio, Clock, CheckCircle2, Loader2, Globe,
-  Code, Layers, UserCircle, Hexagon, Cpu
+  Code, Layers, UserCircle, Hexagon, Cpu, MessageSquare, Plus, Trash2, X, History, Zap, ArrowUp, SquarePen
 } from "lucide-react";
+import ResumePreview, { ResumeData } from "@/components/resume/ResumePreview";
+
 
 type StageStatus = "pending" | "active" | "completed";
 
@@ -25,6 +28,47 @@ interface PipelineStage {
   links?: string[];
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  mode?: "instant" | "expert" | "corporate";
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+const STORAGE_KEY = "agentx_chat_sessions";
+const ACTIVE_SESSION_KEY = "agentx_active_session";
+
+function loadSessions(): ChatSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveSessions(sessions: ChatSession[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function saveActiveId(id: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ACTIVE_SESSION_KEY, id);
+}
+
+function loadActiveId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ACTIVE_SESSION_KEY);
+}
+
 const INITIAL_STAGES: PipelineStage[] = [
   { id: "read_resume", title: "Reading your resume", description: "Extracting skills, experience, and core competencies from your profile.", icon: FileText, status: "pending" },
   { id: "build_context", title: "Building career context", description: "Analyzing your career trajectory and determining optimal next steps.", icon: BrainCircuit, status: "pending" },
@@ -36,25 +80,201 @@ const INITIAL_STAGES: PipelineStage[] = [
   { id: "monitor", title: "Monitoring continuously", description: "Silently watching for new opportunities 24/7.", icon: Radio, status: "pending" }
 ];
 
+const CORPORATE_STAGES: PipelineStage[] = [
+  { id: "thought_process", title: "Thought process", description: "Analyzing the prompt for optimal document layout.", icon: BrainCircuit, status: "pending" },
+  { id: "agent_generating", title: "Agent is generating hold tight", description: "Drafting the professional document with precision.", icon: Rocket, status: "pending" }
+];
+
+const SplitText = ({ text, delayOffset = 0, className = "" }: { text: string, delayOffset?: number, className?: string }) => {
+  return (
+    <span className={className}>
+      {text.split("").map((char, index) => (
+        <motion.span
+          key={index}
+          initial={{ opacity: 0, filter: "blur(3px)", y: 4 }}
+          animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+          transition={{
+            duration: 0.5,
+            delay: delayOffset + index * 0.02,
+            ease: [0.2, 0.65, 0.3, 0.9],
+          }}
+          className="inline-block whitespace-pre"
+        >
+          {char}
+        </motion.span>
+      ))}
+    </span>
+  );
+};
+
 export default function AgentXPage() {
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [activeStageIndex, setActiveStageIndex] = useState<number>(0);
   const [showResults, setShowResults] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string>("");
+  const [isDeployingAgents, setIsDeployingAgents] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const runMission = async (query: string) => {
+  // Session management
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>("");
+  const [showRecentChats, setShowRecentChats] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<"instant" | "expert" | "corporate">("expert");
+
+  const handleModeSwitch = (newMode: "instant" | "expert" | "corporate") => {
+    setMode(newMode);
+    setShowResults(false);
     setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
-    setShowResults(true); // Show findings immediately when starting
-    setAiResponse("");
+    setActiveStageIndex(0);
+  };
+
+  // Load sessions from localStorage on mount
+  useEffect(() => {
+    setMounted(true);
+    const loaded = loadSessions();
+    if (loaded.length > 0) {
+      setSessions(loaded);
+      const savedActiveId = loadActiveId();
+      const activeSession = savedActiveId ? loaded.find(s => s.id === savedActiveId) : loaded[0];
+      if (activeSession) {
+        setActiveSessionId(activeSession.id);
+        setChatHistory(activeSession.messages);
+      }
+    } else {
+      const newSession = createNewSession();
+      setSessions([newSession]);
+      setActiveSessionId(newSession.id);
+    }
+  }, []);
+
+  // Persist sessions whenever chatHistory changes
+  useEffect(() => {
+    if (!activeSessionId || chatHistory.length === 0) return;
+    setSessions(prev => {
+      const updated = prev.map(s => {
+        if (s.id !== activeSessionId) return s;
+        // Auto-generate title from first user message
+        const firstUserMsg = chatHistory.find(m => m.role === "user");
+        const title = firstUserMsg ? firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? "..." : "") : s.title;
+        return { ...s, messages: chatHistory, title, updatedAt: Date.now() };
+      });
+      saveSessions(updated);
+      return updated;
+    });
+  }, [chatHistory, activeSessionId]);
+
+  function createNewSession(): ChatSession {
+    return {
+      id: `session_${Date.now()}`,
+      title: "New Chat",
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
+
+  const handleNewChat = () => {
+    const newSession = createNewSession();
+    setSessions(prev => {
+      const updated = [newSession, ...prev];
+      saveSessions(updated);
+      return updated;
+    });
+    setActiveSessionId(newSession.id);
+    saveActiveId(newSession.id);
+    setChatHistory([]);
+    setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
+    setShowResults(false);
+    setShowRecentChats(false);
+  };
+
+  const handleSwitchSession = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setActiveSessionId(session.id);
+    saveActiveId(session.id);
+    setChatHistory(session.messages);
+    setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
+    setShowResults(session.messages.length > 0);
+    setShowRecentChats(false);
+  };
+
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSessions(prev => {
+      const updated = prev.filter(s => s.id !== sessionId);
+      saveSessions(updated);
+      if (sessionId === activeSessionId) {
+        if (updated.length > 0) {
+          setActiveSessionId(updated[0].id);
+          saveActiveId(updated[0].id);
+          setChatHistory(updated[0].messages);
+        } else {
+          const newSession = createNewSession();
+          updated.push(newSession);
+          saveSessions(updated);
+          setActiveSessionId(newSession.id);
+          saveActiveId(newSession.id);
+          setChatHistory([]);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const scrollToBottom = () => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory]);
+
+  const runMission = async (query: string, missionMode: "instant" | "expert" | "corporate" = "expert") => {
+    const lowerQuery = query.toLowerCase();
+    const isGenerationRequest = lowerQuery.includes("generate") || lowerQuery.includes("create") || lowerQuery.includes("build") || lowerQuery.includes("make") || lowerQuery.includes("write");
+    const isDocumentRequest = lowerQuery.includes("resume") || lowerQuery.includes("cv") || lowerQuery.includes("portfolio") || lowerQuery.includes("document");
+
+    if (missionMode !== "corporate" && isGenerationRequest && isDocumentRequest) {
+      const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: query, mode: missionMode };
+      const agentMsg: ChatMessage = { 
+        id: (Date.now() + 1).toString(), 
+        role: "agent", 
+        content: "I apologize, but document generation (such as Resumes, CVs, and Portfolios) is exclusively available in **Corporate Mode**.\n\nPlease switch to Corporate Mode to access these premium templates and generation features.", 
+        mode: missionMode 
+      };
+      setChatHistory(prev => [...prev, userMsg, agentMsg]);
+      setShowResults(true);
+      return;
+    }
+
+    const targetStages = missionMode === "corporate" ? CORPORATE_STAGES : INITIAL_STAGES;
+    setStages(targetStages.map(s => ({ ...s, status: "pending" })));
+    setShowResults(true);
+    setIsDeployingAgents(false);
+
+    const missionStartTime = Date.now();
+
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: query, mode: missionMode };
+    const agentMsgId = (Date.now() + 1).toString();
+    const agentMsg: ChatMessage = { id: agentMsgId, role: "agent", content: "", mode: missionMode };
+
+    setChatHistory(prev => [...prev, userMsg, agentMsg]);
 
     let fullResponse = "";
 
     const activateStage = (id: string, description?: string) => {
       setStages(prev => {
         const next = [...prev];
-        // Auto-complete any currently active stages
+        // Auto-complete any currently active stages EXCEPT build_context and agent_generating
         for (let i = 0; i < next.length; i++) {
-          if (next[i].status === "active" && next[i].id !== id) {
+          if (next[i].status === "active" && next[i].id !== id && next[i].id !== "build_context" && next[i].id !== "agent_generating") {
             next[i] = {
               ...next[i],
               status: "completed",
@@ -64,13 +284,22 @@ export default function AgentXPage() {
           }
         }
         const idx = next.findIndex(s => s.id === id);
-        if (idx !== -1) {
+        if (idx !== -1 && next[idx].id !== "build_context") {
           setActiveStageIndex(idx);
-          next[idx] = { 
-            ...next[idx], 
-            status: "active", 
+          next[idx] = {
+            ...next[idx],
+            status: "active",
             startedAt: Date.now(),
-            description: description || next[idx].description 
+            description: description || next[idx].description
+          };
+        } else if (idx !== -1 && next[idx].id === "build_context" && next[idx].status !== "active") {
+          // Only activate build_context if it isn't already active
+          setActiveStageIndex(idx);
+          next[idx] = {
+            ...next[idx],
+            status: "active",
+            startedAt: Date.now(),
+            description: description || next[idx].description
           };
         }
         return next;
@@ -94,16 +323,49 @@ export default function AgentXPage() {
       });
     };
 
-    activateStage("build_context");
+    if (missionMode === "corporate") {
+      activateStage("thought_process");
+      setTimeout(() => {
+        completeStage("thought_process");
+        activateStage("agent_generating");
+      }, 1500);
+    } else {
+      activateStage("build_context");
+    }
 
     let hasWrappedUp = false;
     const wrapUp = () => {
       if (hasWrappedUp) return;
       hasWrappedUp = true;
 
-      setStages(prev => prev.map(s => ({ ...s, status: "completed" as const, timestamp: Date.now() })));
+      // Compute real durations for every stage using missionStartTime
+      setStages(prev => prev.map(s => {
+        const now = Date.now();
+        if (s.status === "completed" && s.duration && s.duration > 0) {
+          // Already has a valid duration, preserve it
+          return s;
+        }
+        return {
+          ...s,
+          status: "completed" as const,
+          completedAt: now,
+          duration: (s.id === "build_context" || s.id === "agent_generating")
+            ? now - missionStartTime
+            : s.startedAt ? now - s.startedAt : 0
+        };
+      }));
       setActiveStageIndex(7);
       setShowResults(true);
+
+      setTimeout(() => {
+        const msgEl = document.getElementById(`msg-${agentMsgId}`);
+        if (msgEl && chatScrollRef.current) {
+          chatScrollRef.current.scrollTo({
+            top: msgEl.offsetTop - 20,
+            behavior: "smooth"
+          });
+        }
+      }, 100);
     };
 
     try {
@@ -111,7 +373,12 @@ export default function AgentXPage() {
       const res = await fetch(`${API_URL}/api/v1/assistant/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: query, phone_number: "test_user" }),
+        body: JSON.stringify({
+          message: query,
+          history: chatHistory.map(m => ({ role: m.role, content: m.content })),
+          phone_number: "test_user",
+          mode: mode
+        }),
       });
 
       if (!res.body) throw new Error("No response body");
@@ -139,6 +406,7 @@ export default function AgentXPage() {
               if (data.type === "tool_start") {
                 if (data.tool === "search_web") {
                   activateStage("find_companies", data.input?.query || "Gathering live data...");
+                  setIsDeployingAgents(true);
                 } else if (data.tool === "get_user_profile") {
                   activateStage("read_resume");
                 }
@@ -158,21 +426,36 @@ export default function AgentXPage() {
                   completeStage("read_resume");
                 }
               } else if (data.type === "token") {
+                setIsDeployingAgents(false);
                 fullResponse += data.content;
-                setAiResponse(prev => prev + data.content);
+                setChatHistory(prev => {
+                  const next = [...prev];
+                  const lastIdx = next.length - 1;
+                  if (lastIdx >= 0 && next[lastIdx].role === "agent") {
+                    next[lastIdx] = { ...next[lastIdx], content: next[lastIdx].content + data.content };
+                  }
+                  return next;
+                });
                 setStages(prev => {
                   const next = [...prev];
                   const prepIdx = next.findIndex(s => s.id === "prepare_recs");
-                  if (next[prepIdx].status === "pending") {
+                  if (prepIdx !== -1 && next[prepIdx].status === "pending") {
+                    const now = Date.now();
+                    // Complete all prior stages, build_context gets real total thinking time
                     for (let i = 0; i < prepIdx; i++) {
                       if (next[i].status !== "completed") {
-                        next[i].status = "completed";
-                        next[i].completedAt = Date.now();
-                        next[i].duration = Date.now() - (next[i].startedAt || Date.now() - 1000);
+                        next[i] = {
+                          ...next[i],
+                          status: "completed" as const,
+                          completedAt: now,
+                          duration: next[i].id === "build_context"
+                            ? now - missionStartTime
+                            : next[i]?.startedAt ? now - (next[i]?.startedAt ?? 0) : 0
+                        };
                       }
                     }
                     next[prepIdx].status = "active";
-                    next[prepIdx].startedAt = Date.now();
+                    next[prepIdx].startedAt = now;
                     setActiveStageIndex(prepIdx);
                   }
                   return next;
@@ -182,7 +465,7 @@ export default function AgentXPage() {
               } else if (data.type === "error") {
                 console.error("Backend error:", data.error);
                 alert("The AI agent encountered an error: " + data.error);
-                setStages(INITIAL_STAGES.map(s => ({ ...s, status: "pending" })));
+                setStages(targetStages.map(s => ({ ...s, status: "pending" })));
               }
             } catch (err) {
               console.error("Parse error:", err);
@@ -228,6 +511,12 @@ export default function AgentXPage() {
                   Your autonomous AI partner quietly discovers, analyzes, and curates the best opportunities for your career growth.
                 </p>
               </div>
+              <button
+                onClick={() => setShowRecentChats(prev => !prev)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-full text-[12px] font-medium text-white/70 hover:text-white hover:border-white/[0.15] transition-all shrink-0"
+              >
+                <MessageSquare className="w-3.5 h-3.5" /> Recent Chats
+              </button>
             </div>
 
             {/* Split row: Globe (left) and Activity Timeline (right) */}
@@ -250,7 +539,7 @@ export default function AgentXPage() {
                 <motion.div
                   animate={activeStageIndex === 7 ? { y: [0, -4, 0] } : { y: [0, -10, 0] }}
                   transition={{ repeat: Infinity, duration: activeStageIndex === 7 ? 8 : 4, ease: "easeInOut" }}
-                  className="relative w-[150px] h-[150px] md:w-[200px] md:h-[200px] shrink-0"
+                  className={`relative shrink-0 ${mode === 'corporate' ? 'w-[180px] h-[180px] md:w-[240px] md:h-[240px]' : 'w-[150px] h-[150px] md:w-[200px] md:h-[200px]'} transition-all duration-1000`}
                   style={{ perspective: 1000 }}
                 >
                   {/* Rotating 3D Crystal Core */}
@@ -318,27 +607,113 @@ export default function AgentXPage() {
                           <stop offset="40%" stopColor="#ffffff" stopOpacity="0.05" />
                           <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                         </linearGradient>
+
+                        <linearGradient id="tieCore" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="50%" stopColor="#fbbf24" />
+                          <stop offset="100%" stopColor="#d97706" />
+                        </linearGradient>
+
+                        <linearGradient id="lapelGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+                        </linearGradient>
                       </defs>
 
-                      {/* Main Hexagon Body */}
-                      <polygon
-                        points="50,2 93,25 93,75 50,98 7,75 7,25"
-                        fill="url(#hexagonGrad)"
-                        stroke="url(#glassBorder)"
-                        strokeWidth="1.2"
-                      />
+                      {mode === 'corporate' ? (
+                        <>
+                          <defs>
+                            <linearGradient id="suitBase" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#1e1b2e" />
+                              <stop offset="100%" stopColor="#09080d" />
+                            </linearGradient>
+                            <linearGradient id="vestBase" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#151221" />
+                              <stop offset="100%" stopColor="#000000" />
+                            </linearGradient>
+                            <linearGradient id="tieDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#1e1b3a" />
+                              <stop offset="50%" stopColor="#3b3269" />
+                              <stop offset="100%" stopColor="#0a0914" />
+                            </linearGradient>
+                            <radialGradient id="headGrad" cx="40%" cy="30%" r="60%">
+                              <stop offset="0%" stopColor="#352c4a" />
+                              <stop offset="50%" stopColor="#13101c" />
+                              <stop offset="100%" stopColor="#05040a" />
+                            </radialGradient>
+                            <clipPath id="hexClip">
+                              <polygon points="50,2 91.5,26 91.5,74 50,98 8.5,74 8.5,26" />
+                            </clipPath>
+                          </defs>
 
-                      {/* Overlay Highlight/Glaze Sheet */}
-                      <polygon
-                        points="50,3 91,25 91,73 50,95 9,73 9,25"
-                        fill="url(#glassShine)"
-                        pointerEvents="none"
-                      />
+                          {/* Outer Glass Hexagon */}
+                          <polygon points="50,2 91.5,26 91.5,74 50,98 8.5,74 8.5,26" fill="none" stroke="#a855f7" strokeWidth="0.6" filter="drop-shadow(0 0 4px rgba(168,85,247,0.8))" opacity="0.9" />
+                          <polygon points="50,3.5 89.5,26.5 89.5,73.5 50,96.5 10.5,73.5 10.5,26.5" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.3" />
+
+                          {/* Masked Body */}
+                          <g clipPath="url(#hexClip)">
+                            {/* Ambient background inside frame */}
+                            <polygon points="50,2 91.5,26 91.5,74 50,98 8.5,74 8.5,26" fill="rgba(10,5,20,0.4)" />
+
+                            {/* Shoulders / Jacket Base */}
+                            <path d="M 0 100 L 0 70 C 15 65, 30 55, 42 50 C 47 48, 53 48, 58 50 C 70 55, 85 65, 100 70 L 100 100 Z" fill="url(#suitBase)" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+
+                            {/* Inner Vest */}
+                            <path d="M 25 100 L 40 60 L 50 70 L 60 60 L 75 100 Z" fill="url(#vestBase)" />
+
+                            {/* Shirt Background */}
+                            <path d="M 40 60 L 50 85 L 60 60 Z" fill="#ffffff" />
+
+                            {/* Collar */}
+                            <polygon points="40,58 50,70 47,56" fill="#e2e8f0" filter="drop-shadow(1px 2px 2px rgba(0,0,0,0.2))" />
+                            <polygon points="60,58 50,70 53,56" fill="#cbd5e1" filter="drop-shadow(-1px 2px 2px rgba(0,0,0,0.2))" />
+                            <polygon points="43,56 50,62 57,56" fill="#000000" opacity="0.7" />
+
+                            {/* Tie */}
+                            <polygon points="48.5,67 51.5,67 51,71 49,71" fill="url(#tieDark)" filter="drop-shadow(0 2px 2px rgba(0,0,0,0.6))" />
+                            <polygon points="49,72 51,72 53.5,95 50,100 46.5,95" fill="url(#tieDark)" filter="drop-shadow(0 2px 6px rgba(0,0,0,0.6))" />
+
+                            {/* Lapels */}
+                            <path d="M 38 56 L 25 75 L 28 80 L 44 100 L 48 100 L 42 75 Z" fill="url(#suitBase)" stroke="rgba(255,255,255,0.08)" strokeWidth="0.3" filter="drop-shadow(3px 0 6px rgba(0,0,0,0.5))" />
+                            <path d="M 62 56 L 75 75 L 72 80 L 56 100 L 52 100 L 58 75 Z" fill="url(#suitBase)" stroke="rgba(255,255,255,0.08)" strokeWidth="0.3" filter="drop-shadow(-3px 0 6px rgba(0,0,0,0.5))" />
+
+                            {/* Pocket Square */}
+                            <rect x="68" y="77" width="9" height="1.5" fill="#ffffff" transform="rotate(-6 68 77)" filter="drop-shadow(0 1px 1px rgba(0,0,0,0.3))" />
+
+                            {/* Lapel Pin */}
+                            <polygon points="32,70 34,71 34,73 32,74 30,73 30,71" fill="none" stroke="#a855f7" strokeWidth="0.5" filter="drop-shadow(0 0 3px #a855f7)" />
+                            <circle cx="32" cy="72" r="0.5" fill="#ffffff" />
+
+                            {/* Neck Shadow Drop */}
+                            <polygon points="50,45 58,52 50,60 42,52" fill="#000" opacity="0.8" filter="blur(3px)" />
+
+                            {/* 3D Glossy Head Hexagon */}
+                            <polygon points="50,9 71.65,21.5 71.65,46.5 50,59 28.35,46.5 28.35,21.5" fill="url(#headGrad)" stroke="url(#glassBorder)" strokeWidth="0.8" filter="drop-shadow(0 12px 15px rgba(0,0,0,0.9))" />
+                          </g>
+                        </>
+                      ) : (
+                        <>
+                          {/* Standard Mode Hexagon Body */}
+                          <polygon
+                            points="50,2 93,25 93,75 50,98 7,75 7,25"
+                            fill="url(#hexagonGrad)"
+                            stroke="url(#glassBorder)"
+                            strokeWidth="1.2"
+                          />
+
+                          {/* Overlay Highlight/Glaze Sheet */}
+                          <polygon
+                            points="50,3 91,25 91,73 50,95 9,73 9,25"
+                            fill="url(#glassShine)"
+                            pointerEvents="none"
+                          />
+                        </>
+                      )}
                     </svg>
 
                     {/* Futuristic Glass Capsule Eyes (Animated with Framer Motion for looking around) */}
                     <motion.div
-                      className="absolute top-[48%] left-[50%] flex gap-3.5 z-20 pointer-events-none"
+                      className={`absolute ${mode === 'corporate' ? 'top-[34%] gap-4' : 'top-[48%] gap-3.5'} left-[50%] flex z-20 pointer-events-none transition-all duration-1000`}
                       animate={
                         !showResults
                           ? {
@@ -379,6 +754,40 @@ export default function AgentXPage() {
                           <div className="w-2.5 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1),inset_0_1px_1px_rgba(0,0,0,0.2)] eye-think-left" />
                           <div className="w-2.5 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1),inset_0_1px_1px_rgba(0,0,0,0.2)] eye-think-right" />
                         </>
+                      ) : mode === 'instant' ? (
+                        <>
+                          {/* Energetic Instant Eyes: Normal capsules with a rapid lightning bolt surge effect */}
+                          <div className="relative flex justify-center items-center w-2 h-6">
+                            <motion.div
+                              animate={{ opacity: [1, 1, 0, 1, 1] }}
+                              transition={{ repeat: Infinity, duration: 3, times: [0, 0.85, 0.9, 0.95, 1], ease: "easeInOut" }}
+                              className="absolute w-full h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8),inset_0_1px_1px_rgba(0,0,0,0.2)]"
+                            />
+                            <motion.svg
+                              animate={{ opacity: [0, 0, 1, 0, 0], scale: [0.5, 0.5, 1.5, 0.5, 0.5] }}
+                              transition={{ repeat: Infinity, duration: 3, times: [0, 0.85, 0.9, 0.95, 1], ease: "easeInOut" }}
+                              width="14" height="24" viewBox="0 0 24 40" fill="none"
+                              className="absolute z-10 overflow-visible drop-shadow-[0_0_12px_rgba(255,255,255,1)]"
+                            >
+                              <path d="M14 0L0 22H11L9 40L24 16H13L14 0Z" fill="white" />
+                            </motion.svg>
+                          </div>
+                          <div className="relative flex justify-center items-center w-2 h-6">
+                            <motion.div
+                              animate={{ opacity: [1, 1, 0, 1, 1] }}
+                              transition={{ repeat: Infinity, duration: 3, times: [0, 0.85, 0.9, 0.95, 1], ease: "easeInOut" }}
+                              className="absolute w-full h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8),inset_0_1px_1px_rgba(0,0,0,0.2)]"
+                            />
+                            <motion.svg
+                              animate={{ opacity: [0, 0, 1, 0, 0], scale: [0.5, 0.5, 1.5, 0.5, 0.5] }}
+                              transition={{ repeat: Infinity, duration: 3, times: [0, 0.85, 0.9, 0.95, 1], ease: "easeInOut" }}
+                              width="14" height="24" viewBox="0 0 24 40" fill="none"
+                              className="absolute z-10 overflow-visible drop-shadow-[0_0_12px_rgba(255,255,255,1)]"
+                            >
+                              <path d="M14 0L0 22H11L9 40L24 16H13L14 0Z" fill="white" />
+                            </motion.svg>
+                          </div>
+                        </>
                       ) : (
                         <>
                           {/* Idle default eyes */}
@@ -390,22 +799,50 @@ export default function AgentXPage() {
                   </motion.div>
                 </motion.div>
 
-                <div className="flex flex-col items-center mt-6">
+                <div className="flex flex-col items-center mt-8 w-full px-4">
                   <AnimatePresence mode="wait">
                     {!showResults && (
-                      <motion.p
-                        key="default-greeting"
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
+                      <motion.div
+                        key={`subtitle-${mode}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-white/80 text-[14.5px] font-medium tracking-wide text-center"
+                        transition={{ duration: 0.2 }}
+                        className="w-full mt-2 flex overflow-x-auto custom-scrollbar py-2"
                       >
-                        How can I help you today on finding Jobs?
-                      </motion.p>
+                        <div className="flex flex-col items-center justify-center mx-auto text-[10px] sm:text-[11px] md:text-[13px] lg:text-[14px] font-light tracking-[0.02em] text-white px-4 gap-1.5 md:gap-2">
+                          {mode === 'instant' && (
+                            <>
+                              <SplitText text="INSTANT" className="font-bold text-white tracking-[0.25em] text-[9px] sm:text-[10px] md:text-[11px] lg:text-[12px] whitespace-nowrap" />
+                              <SplitText text="Lightning-fast answers and quick insights" delayOffset={0.15} className="whitespace-nowrap text-white/70" />
+                            </>
+                          )}
+                          {mode === 'expert' && (
+                            <>
+                              <SplitText text="EXPERT" className="font-bold text-purple-400 tracking-[0.25em] text-[9px] sm:text-[10px] md:text-[11px] lg:text-[12px] whitespace-nowrap" />
+                              <SplitText text="Deep research and comprehensive analysis" delayOffset={0.15} className="whitespace-nowrap text-white/70" />
+                            </>
+                          )}
+                          {mode === 'corporate' && (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <SplitText text="CORPORATE" className="font-bold text-amber-400 tracking-[0.25em] text-[9px] sm:text-[10px] md:text-[11px] lg:text-[12px] whitespace-nowrap" />
+                                <motion.span
+                                  initial={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
+                                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                                  transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+                                  className="px-2 py-[2px] rounded-md text-[7px] sm:text-[8px] font-medium bg-gradient-to-b from-white/20 to-white/5 border border-white/20 text-white uppercase tracking-[0.2em] shadow-[0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] backdrop-blur-md"
+                                >
+                                  BETA
+                                </motion.span>
+                              </div>
+                              <SplitText text="Premium resumes, CVs, and professional portfolios" delayOffset={0.15} className="whitespace-nowrap text-white/70" />
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
                     )}
                   </AnimatePresence>
-
                 </div>
               </div>
 
@@ -437,7 +874,7 @@ export default function AgentXPage() {
 
           </div>
 
-          {/* Right Side: AI Agent Findings (placed where timeline used to be) */}
+          {/* Right Side: AI Agent Session (Chat UI) */}
           <div className="w-full xl:w-[460px] flex flex-col flex-none min-h-[500px] xl:min-h-0 xl:h-full xl:overflow-hidden">
 
             <div className="bg-white/[0.02] backdrop-blur-[45px] saturate-[180%] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-300 rounded-[28px] p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_12px_40px_rgba(0,0,0,0.6)] relative flex flex-col h-full">
@@ -445,37 +882,104 @@ export default function AgentXPage() {
 
               <div className="flex justify-between items-center mb-4 relative z-10 shrink-0">
                 <h2 className="text-[15px] font-semibold flex items-center gap-2 text-white tracking-wide">
-                  AgentX Findings <Hexagon className="text-purple-400 w-4 h-4 animate-pulse" />
+                  AgentX Session <Hexagon className="text-purple-400 w-4 h-4 animate-pulse" />
                 </h2>
               </div>
 
-              {/* Findings Scroll Area */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10">
-                {aiResponse || activeStageIndex > 0 ? (
-                  <div className="prose prose-invert prose-purple max-w-none text-white/90 leading-relaxed">
-                    {aiResponse ? (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 transition-colors" />,
-                          h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-bold mt-4 mb-2 text-white" />,
-                          h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-bold mt-4 mb-2 text-white/95" />,
-                          h3: ({ node, ...props }) => <h3 {...props} className="text-md font-semibold mt-3 mb-1.5 text-white/90" />,
-                          ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-4 mb-3 space-y-1 text-white/80" />,
-                          ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-4 mb-3 space-y-1 text-white/80" />,
-                          li: ({ node, ...props }) => <li {...props} className="text-[13px] leading-relaxed" />,
-                          p: ({ node, ...props }) => <p {...props} className="mb-3 text-[13px] leading-relaxed text-white/80" />,
-                          strong: ({ node, ...props }) => <strong {...props} className="font-semibold text-white/95" />,
-                        }}
-                      >
-                        {aiResponse}
-                      </ReactMarkdown>
-                    ) : (
-                      <PremiumAgentXLoader />
-                    )}
-                  </div>
+              {/* Chat Scroll Area */}
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10 flex flex-col gap-5 pb-4">
+                {chatHistory.length > 0 ? (
+                  <>
+                    {chatHistory.map((msg) => (
+                      <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                        {msg.role === 'agent' && (
+                          <div className="flex items-center gap-2 mb-2 ml-1">
+                            {msg.mode === 'corporate' ? (
+                              <UserTieIcon className="w-3.5 h-3.5 text-white/70" />
+                            ) : (
+                              <Hexagon className="w-3.5 h-3.5 text-purple-400" />
+                            )}
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${msg.mode === 'corporate' ? 'text-white/80' : 'text-purple-300'}`}>
+                              {msg.mode === 'corporate' ? 'AgentX Corporate' : 'AgentX'}
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-[95%] px-5 py-4 ${msg.role === 'user'
+                            ? 'bg-white/[0.04] backdrop-blur-[40px] border border-white/[0.08] text-white/95 rounded-[24px] rounded-br-[8px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_10px_30px_rgba(0,0,0,0.5)]'
+                            : 'bg-black/20 border border-white/10 text-white/90 rounded-[24px] rounded-bl-[8px] w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'
+                            }`}
+                        >
+                          {msg.role === 'user' ? (
+                            <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          ) : (
+                            msg.content ? (
+                              (() => {
+                                const trimmed = msg.content.trim();
+                                if (trimmed.startsWith('{')) {
+                                  try {
+                                    const data = JSON.parse(trimmed) as ResumeData;
+                                    if (data && data.personalInfo) {
+                                      return <div className="my-6 overflow-hidden rounded-xl"><ResumePreview data={data} /></div>;
+                                    }
+                                    } catch (e) {
+                                      return <PremiumDocumentRendererLoader />;
+                                    }
+                                }
+                                return (
+                                  <div className="prose prose-invert prose-purple max-w-none text-white/90 leading-relaxed break-words">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      components={{
+                                        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 transition-colors break-all" />,
+                                        h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-bold mt-4 mb-2 text-white" />,
+                                        h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-bold mt-4 mb-2 text-white/95" />,
+                                        h3: ({ node, ...props }) => <h3 {...props} className="text-md font-semibold mt-3 mb-1.5 text-white/90" />,
+                                        ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-4 mb-3 space-y-1 text-white/80" />,
+                                        ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-4 mb-3 space-y-1 text-white/80" />,
+                                        li: ({ node, ...props }) => <li {...props} className="text-[13px] leading-relaxed break-words" />,
+                                        p: ({ node, ...props }) => <p {...props} className="mb-3 text-[13px] leading-relaxed text-white/80 last:mb-0 break-words" />,
+                                        strong: ({ node, ...props }) => <strong {...props} className="font-semibold text-white/95" />,
+                                        table: ({ node, ...props }) => <div className="overflow-x-auto my-4 rounded-xl border border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"><table {...props} className="w-full text-[12px] text-left" /></div>,
+                                        thead: ({ node, ...props }) => <thead {...props} className="bg-white/[0.06] text-white/80 uppercase text-[11px] tracking-wider" />,
+                                        tbody: ({ node, ...props }) => <tbody {...props} className="divide-y divide-white/[0.04]" />,
+                                        tr: ({ node, ...props }) => <tr {...props} className="hover:bg-white/[0.03] transition-colors" />,
+                                        th: ({ node, ...props }) => <th {...props} className="px-4 py-3 font-semibold text-white/70 border-b border-white/[0.08]" />,
+                                        td: ({ node, ...props }) => <td {...props} className="px-4 py-3 text-white/70" />,
+                                        hr: ({ node, ...props }) => <hr {...props} className="my-4 border-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />,
+                                        code: ({ node, inline, className, children, ...props }: any) => {
+                                          const match = /language-(\w+)/.exec(className || '');
+                                          if (!inline && match && match[1] === 'json') {
+                                            const codeStr = String(children).replace(/\n$/, '');
+                                            try {
+                                              const data = JSON.parse(codeStr) as ResumeData;
+                                              if (data && data.personalInfo) {
+                                                return <div className="my-6 overflow-hidden rounded-xl"><ResumePreview data={data} /></div>;
+                                              }
+                                            } catch (e) {
+                                              return <PremiumDocumentRendererLoader />;
+                                            }
+                                          }
+                                          return <code className={className} {...props}>{children}</code>;
+                                        },
+                                      }}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              isDeployingAgents ? <DeployingAgentsAnimation /> : <PremiumAgentXLoader />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="h-2 w-full shrink-0" />
+                  </>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-white/30 px-4 py-20">
+                  <div className="h-full flex flex-col items-center justify-center text-center text-white/30 px-4 py-20 mt-10">
                     <Hexagon className="w-12 h-12 mb-3 text-white/10" />
                     <p className="text-[13px] leading-relaxed">Deploy a mission to start receiving career insights and job matches here.</p>
                   </div>
@@ -486,12 +990,120 @@ export default function AgentXPage() {
           </div>
 
         </motion.div>
+
+        {/* Recent Chats Overlay Panel */}
+        {mounted ? createPortal(
+          <AnimatePresence>
+            {showRecentChats && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowRecentChats(false)}
+                  className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+                />
+                {/* Premium Panel */}
+                <motion.div
+                  initial={{ x: '100%', opacity: 0, scale: 0.95, filter: 'blur(12px)' }}
+                  animate={{ x: 0, opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ x: '100%', opacity: 0, scale: 0.95, filter: 'blur(12px)' }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.8 }}
+                  className="fixed right-0 top-0 h-full w-[340px] bg-[#050505]/60 backdrop-blur-[80px] saturate-[150%] border-l border-white/[0.06] z-[101] flex flex-col shadow-[-20px_0_80px_rgba(0,0,0,0.6)]"
+                >
+                  {/* Subtle top ambient glow */}
+                  <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-purple-500/10 to-transparent pointer-events-none opacity-50" />
+
+                  {/* Panel Header */}
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.04] relative z-10">
+                    <h3 className="text-[15px] font-semibold text-white/90 tracking-tight flex items-center gap-2">
+                      <History className="w-4 h-4 text-purple-400" /> Recent Chats
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handleNewChat}
+                        className="p-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white/60 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+                        title="New Chat"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setShowRecentChats(false)}
+                        className="p-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white/60 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Session List */}
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } }
+                    }}
+                    className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 flex flex-col gap-2 relative z-10"
+                  >
+                    {sessions.sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
+                      <motion.button
+                        variants={{
+                          hidden: { opacity: 0, x: 20, scale: 0.95 },
+                          visible: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 400, damping: 25 } }
+                        }}
+                        key={session.id}
+                        onClick={() => handleSwitchSession(session.id)}
+                        className={`w-full text-left p-4 rounded-[20px] transition-all duration-300 group flex items-start gap-3.5 relative overflow-hidden ${session.id === activeSessionId
+                          ? 'bg-white/[0.06] border border-white/[0.1] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_20px_rgba(0,0,0,0.2)]'
+                          : 'bg-transparent hover:bg-white/[0.04] border border-transparent'
+                          }`}
+                      >
+                        {/* Active State Background Gradient */}
+                        {session.id === activeSessionId && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-100 pointer-events-none" />
+                        )}
+
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${session.id === activeSessionId ? 'bg-purple-500/20 text-purple-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]' : 'bg-white/[0.04] text-white/40 group-hover:bg-white/[0.08] group-hover:text-white/70'
+                          }`}>
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </div>
+
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <p className={`text-[13px] font-medium truncate tracking-wide transition-colors duration-300 ${session.id === activeSessionId ? 'text-white drop-shadow-sm' : 'text-white/70 group-hover:text-white/90'
+                            }`}>
+                            {session.title}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-white/30 mt-1.5 font-medium tracking-wide">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3 opacity-70" /> {new Date(session.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                            <span className="w-1 h-1 rounded-full bg-white/10" />
+                            <span>{session.messages.length} msgs</span>
+                          </div>
+                        </div>
+
+                        <div
+                          onClick={(e) => handleDeleteSession(session.id, e)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 border border-white/5 text-white/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] scale-90 hover:scale-100 z-20 cursor-pointer"
+                          title="Delete Session"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </div>
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        ) : null}
       </div>
 
       {/* Message Bar Container (static flex item at the bottom) */}
       <div className="shrink-0 w-full p-4 md:px-6 md:pb-6 z-20 flex justify-center bg-transparent">
         <div className="w-full max-w-[1000px]">
-          <MessageBar onDeploy={runMission} />
+          <MessageBar onDeploy={runMission} onNewChat={handleNewChat} mode={mode} setMode={handleModeSwitch} />
         </div>
       </div>
 
@@ -572,6 +1184,81 @@ export default function AgentXPage() {
 // Subcomponents
 // --------------------------------------------------------------------------------------
 
+function DeployingAgentsAnimation() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 w-full relative overflow-hidden">
+
+      {/* Ambient Deep Glow */}
+      <motion.div
+        animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+        transition={{ rotate: { duration: 20, repeat: Infinity, ease: "linear" }, scale: { duration: 6, repeat: Infinity, ease: "easeInOut" } }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[-10px] z-0"
+      >
+        <div className="w-40 h-40 rounded-full bg-gradient-to-tr from-purple-600/15 via-pink-500/5 to-transparent blur-[40px]" />
+      </motion.div>
+
+      {/* The Sleek Glass AgentX Core (Rounded Diamond) */}
+      <div className="relative z-10 mt-[-10px]">
+        <motion.div
+          animate={{ boxShadow: ["inset 0 1px 1px rgba(255,255,255,0.1), 0 10px 40px rgba(0,0,0,0.3)", "inset 0 1px 1px rgba(255,255,255,0.3), 0 10px 40px rgba(168,85,247,0.15)", "inset 0 1px 1px rgba(255,255,255,0.1), 0 10px 40px rgba(0,0,0,0.3)"] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="w-20 h-20 bg-white/[0.02] backdrop-blur-[50px] rounded-[24px] border border-white/[0.08] flex items-center justify-center relative overflow-hidden"
+          style={{ transform: "rotate(45deg)" }}
+        >
+          {/* Inner rotating elements (counter-rotate to stay upright) */}
+          <div className="absolute inset-0 flex items-center justify-center" style={{ transform: "rotate(-45deg)" }}>
+            {/* Outer Hexagon */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+              className="absolute"
+            >
+              <Hexagon className="w-9 h-9 text-white/10" strokeWidth={1} />
+            </motion.div>
+
+            {/* Inner Hexagon */}
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute"
+            >
+              <Hexagon className="w-5 h-5 text-purple-400/80" strokeWidth={1.5} />
+            </motion.div>
+
+            {/* Core Dot */}
+            <motion.div
+              animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.9)]"
+            />
+          </div>
+
+          {/* Shimmer sweep effect across the glass */}
+          <motion.div
+            animate={{ x: ['-200%', '200%'] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.5 }}
+            className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[45deg]"
+          />
+        </motion.div>
+      </div>
+
+      {/* Minimalist Typography */}
+      <div className="mt-16 text-center relative z-20 flex flex-col items-center">
+        <motion.div
+          animate={{ opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="text-[11px] font-semibold tracking-[0.25em] text-white/90 uppercase"
+        >
+          AgentX Deployed
+        </motion.div>
+        <div className="text-[12px] text-white/40 mt-3 font-light tracking-wide">
+          Navigating the global index
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PremiumAgentXLoader() {
   const [textIndex, setTextIndex] = useState(0);
   const phrases = [
@@ -617,6 +1304,43 @@ function PremiumAgentXLoader() {
   );
 }
 
+function PremiumDocumentRendererLoader() {
+  return (
+    <div className="flex flex-col md:flex-row items-center gap-5 py-6 px-2 w-full">
+      {/* Refined Minimal Spinner */}
+      <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
+        <svg className="absolute inset-0 w-full h-full text-white/10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+        </svg>
+        <motion.svg 
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="absolute inset-0 w-full h-full text-white/90 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+        </motion.svg>
+      </div>
+
+      <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1.5">
+        <motion.div 
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          className="text-[14px] font-semibold tracking-wide text-white/95"
+        >
+          Crafting Professional Document
+        </motion.div>
+        <p className="text-[12px] font-medium text-white/40 tracking-wide flex items-center gap-1">
+          Analyzing optimal layout and structure
+          <span className="flex gap-[3px] ml-1 shrink-0">
+            <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.4, repeat: Infinity, delay: 0 }} className="w-1 h-1 rounded-full bg-white/50" />
+            <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.4, repeat: Infinity, delay: 0.2 }} className="w-1 h-1 rounded-full bg-white/50" />
+            <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.4, repeat: Infinity, delay: 0.4 }} className="w-1 h-1 rounded-full bg-white/50" />
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function LiveTimer({ startedAt }: { startedAt: number }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -639,6 +1363,8 @@ const getStageText = (id: string, status: string) => {
     case "compare_exp": return activeOrPending ? "Comparing experience..." : "Compared experience";
     case "prepare_recs": return activeOrPending ? "Preparing recommendations..." : "Prepared recommendations";
     case "monitor": return activeOrPending ? "Monitoring continuously..." : "Monitoring continuously";
+    case "thought_process": return activeOrPending ? "Thought process" : "Thought process complete";
+    case "agent_generating": return activeOrPending ? "Agent is generating hold tight" : "Generation complete";
     default: return activeOrPending ? "Thinking..." : "Completed";
   }
 };
@@ -663,7 +1389,7 @@ function TimelineStep({ stage, isLast, formatTime }: { stage: PipelineStage, isL
     >
       {/* Bare Icon container (no background) */}
       <div className="w-6 flex justify-center shrink-0 z-10 pt-[2px]">
-        {isActive && stage.id === "build_context" ? (
+        {isActive && (stage.id === "build_context" || stage.id === "agent_generating") ? (
           <Loader2 className="w-4 h-4 text-white/70 animate-spin" />
         ) : (
           <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-white/40'}`} />
@@ -673,14 +1399,18 @@ function TimelineStep({ stage, isLast, formatTime }: { stage: PipelineStage, isL
       <div className="flex flex-col justify-center min-h-[24px]">
         <div className="flex items-center gap-1.5">
           <h4 className={`text-[13.5px] font-medium tracking-tight ${isActive ? 'text-white' : 'text-white/70'}`}>
-            {stage.id === "build_context" 
-              ? (isCompleted 
-                  ? `Thought for ${Math.floor((stage.duration || 0) / 1000)} seconds`
-                  : "Thinking about your request")
-              : stageText}
+            {stage.id === "build_context"
+              ? (isCompleted
+                ? `Thought for ${Math.floor((stage.duration || 0) / 1000)} seconds`
+                : "Thinking about your request")
+              : stage.id === "agent_generating"
+                ? (isCompleted
+                  ? `Generated in ${Math.floor((stage.duration || 0) / 1000)} seconds`
+                  : "Agent is generating hold tight")
+                : stageText}
           </h4>
 
-          {isActive && stage.id === "build_context" && stage.startedAt && (
+          {isActive && (stage.id === "build_context" || stage.id === "agent_generating") && stage.startedAt && (
             <span className="text-[13.5px] text-white/50 flex items-center gap-1.5">
               <span className="text-white/30">•</span> <LiveTimer startedAt={stage.startedAt} />
             </span>
@@ -768,19 +1498,64 @@ function InsightCard({ icon: Icon, text }: { icon: React.ElementType, text: stri
   );
 }
 
-function MessageBar({ onDeploy }: { onDeploy: (q: string) => void }) {
+function MessageBar({ onDeploy, onNewChat, mode, setMode }: { onDeploy: (q: string, mode: "instant" | "expert" | "corporate") => void, onNewChat: () => void, mode: "instant" | "expert" | "corporate", setMode: (mode: "instant" | "expert" | "corporate") => void }) {
   const [input, setInput] = useState("");
 
   const handleDeploy = () => {
     if (input.trim()) {
-      onDeploy(input.trim());
+      onDeploy(input.trim(), mode);
+      setInput("");
     }
   };
 
+  const modeConfig = {
+    instant: { label: 'Instant', icon: <Zap className="w-3 h-3" /> },
+    expert: { label: 'Expert', icon: <Search className="w-3 h-3" /> },
+    corporate: { label: <span className="flex items-center">Corporate <span className="ml-1.5 px-1.5 py-[2px] rounded-md text-[7.5px] font-medium bg-gradient-to-b from-white/20 to-white/5 border border-white/20 text-white/90 uppercase tracking-[0.15em] shadow-[0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md">BETA</span></span>, icon: <Briefcase className="w-3 h-3" /> },
+  };
+
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white/[0.02] backdrop-blur-[50px] saturate-[180%] border border-white/[0.08] rounded-[24px] p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_16px_48px_rgba(0,0,0,0.6)] relative group hover:border-white/[0.12] transition-all duration-300">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-3">
-        <div className="flex-1 bg-black/40 border border-white/10 rounded-full px-5 py-2.5 flex items-center transition-all focus-within:border-purple-500/30 focus-within:bg-black/60 shadow-[inset_0_1px_1px_rgba(0,0,0,0.5)]">
+    <div className="w-full max-w-4xl mx-auto bg-white/[0.02] backdrop-blur-[60px] border border-white/[0.12] rounded-[28px] p-4 shadow-[inset_0_2px_2px_rgba(255,255,255,0.25),_0_24px_50px_-12px_rgba(0,0,0,0.7)] relative group hover:border-white/[0.18] transition-all duration-300 overflow-hidden">
+      {/* Micro-texture Grain Overlay to simulate matte frosted glass */}
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1.5px)] [background-size:12px_12px]" />
+      {/* Specular gloss glow */}
+      <div className="absolute -top-1/2 left-1/3 w-96 h-96 bg-white/[0.02] blur-[80px] rounded-full pointer-events-none" />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {/* Mode Switcher */}
+        <div className="flex items-center bg-white/[0.04] backdrop-blur-[30px] border border-white/[0.08] rounded-full p-1.5 shrink-0 relative shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] h-14">
+          {(['instant', 'expert', 'corporate'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`relative flex items-center justify-center gap-2 px-5 h-11 rounded-full text-[13px] font-semibold tracking-wide transition-colors duration-300 z-10 ${mode === m ? "text-white drop-shadow-sm" : "text-white/40 hover:text-white/60"}`}
+            >
+              {mode === m && (
+                <motion.div
+                  layoutId="mode-switch-active"
+                  className={`absolute inset-0 backdrop-blur-xl border rounded-full shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.2)] -z-10 ${m === 'corporate'
+                    ? 'bg-amber-500/15 border-amber-400/30'
+                    : 'bg-white/[0.12] border-white/20 shadow-[0_2px_8px_rgba(255,255,255,0.08)]'
+                    }`}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                />
+              )}
+              {modeConfig[m].icon}
+              {modeConfig[m].label}
+            </button>
+          ))}
+        </div>
+
+        {/* Standalone Plus Button */}
+        <button
+          onClick={onNewChat}
+          title="New Chat"
+          className="w-14 h-14 rounded-full bg-white/[0.04] backdrop-blur-[30px] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-white/45 hover:text-white shrink-0 shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] transition-all active:scale-95"
+        >
+          <SquarePen size={18} />
+        </button>
+
+        {/* Input Bar */}
+        <div className="flex-1 bg-white/[0.04] backdrop-blur-[30px] border border-white/[0.08] rounded-full px-5 py-2.5 flex items-center transition-all focus-within:border-white/25 focus-within:bg-white/[0.08] shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] h-14">
           <input
             type="text"
             value={input}
@@ -790,12 +1565,14 @@ function MessageBar({ onDeploy }: { onDeploy: (q: string) => void }) {
             className="w-full bg-transparent text-white/90 text-[13.5px] outline-none placeholder:text-white/30"
           />
         </div>
+
+        {/* Deploy Mission Button */}
         <button
           onClick={handleDeploy}
-          className="relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-semibold text-white transition-all duration-300 group overflow-hidden hover:scale-[1.02] active:scale-[0.98] shrink-0"
+          className="relative flex items-center justify-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-semibold text-white transition-all duration-300 group overflow-hidden hover:scale-[1.02] active:scale-[0.98] shrink-0 h-14"
           style={{
             background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(236, 72, 153, 0.1) 100%)',
-            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 15px rgba(0,0,0,0.2), 0 0 20px rgba(168,85,247,0.2)',
+            boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 4px 15px rgba(0,0,0,0.2), 0 0 20px rgba(168,85,247,0.2)',
           }}
         >
           {/* Glowing spinning border */}
@@ -818,24 +1595,98 @@ function MessageBar({ onDeploy }: { onDeploy: (q: string) => void }) {
         </button>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
-        <span className="text-white/40 text-[11px] font-medium mr-2 shrink-0">Quick Missions</span>
-
-        <QuickMissionButton icon={<Globe className="w-3 h-3" />} text="Remote Jobs" />
-        <QuickMissionButton icon={<Code className="w-3 h-3" />} text="Frontend Roles" />
-        <QuickMissionButton icon={<Sparkles className="w-3 h-3" />} text="AI / ML Roles" />
-        <QuickMissionButton icon={<Rocket className="w-3 h-3" />} text="Startups" />
-        <QuickMissionButton icon={<Layers className="w-3 h-3" />} text="Full Stack" />
-        <QuickMissionButton icon={<UserCircle className="w-3 h-3" />} text="Analyze My Profile" />
-      </div>
+      {mode === 'corporate' ? (
+        <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2 mt-4 px-1">
+          <span className="text-white/50 text-[11px] font-bold mr-2 shrink-0 uppercase tracking-[0.15em] flex items-center gap-1.5">
+            <Briefcase className="w-3 h-3 text-white/40" />
+            Corporate Mode
+            <span className="ml-1.5 px-1.5 py-[1px] rounded-md text-[7px] font-medium bg-gradient-to-b from-white/20 to-white/5 border border-white/20 text-white uppercase tracking-[0.15em] shadow-[0_2px_4px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-md">BETA</span>
+          </span>
+          <CorporateTemplateButton
+            icon={<FileText className="w-3.5 h-3.5" />}
+            text="Generate Resume"
+            onClick={() => setInput("Generate a professional Resume")}
+            active={input.includes("Resume")}
+          />
+          <CorporateTemplateButton
+            icon={<FileText className="w-3.5 h-3.5" />}
+            text="Generate CV"
+            onClick={() => setInput("Generate a detailed CV")}
+            active={input.includes("CV")}
+            locked={true}
+          />
+          <CorporateTemplateButton
+            icon={<Briefcase className="w-3.5 h-3.5" />}
+            text="Build Portfolio"
+            onClick={() => setInput("Generate a professional Portfolio")}
+            active={input.includes("Portfolio")}
+            locked={true}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mt-3">
+          <span className="text-white/40 text-[11px] font-medium mr-2 shrink-0 uppercase tracking-wider">Quick Missions</span>
+          <QuickMissionButton icon={<Globe className="w-3 h-3" />} text="Remote Jobs" onClick={() => setInput("Find remote jobs")} />
+          <QuickMissionButton icon={<Code className="w-3 h-3" />} text="Frontend Roles" onClick={() => setInput("Find frontend roles")} />
+          <QuickMissionButton icon={<Sparkles className="w-3 h-3" />} text="AI / ML Roles" onClick={() => setInput("Find AI / ML roles")} />
+          <QuickMissionButton icon={<Rocket className="w-3 h-3" />} text="Startups" onClick={() => setInput("Find roles at startups")} />
+          <QuickMissionButton icon={<Layers className="w-3 h-3" />} text="Full Stack" onClick={() => setInput("Find full stack roles")} />
+          <QuickMissionButton icon={<UserCircle className="w-3 h-3" />} text="Analyze My Profile" onClick={() => setInput("Analyze my profile")} />
+        </div>
+      )}
     </div>
   );
 }
 
-function QuickMissionButton({ icon, text }: { icon: React.ReactNode, text: string }) {
+function CorporateTemplateButton({ icon, text, onClick, active, locked }: { icon: React.ReactNode, text: string, onClick?: () => void, active?: boolean, locked?: boolean }) {
   return (
-    <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.12] hover:text-white text-white/60 text-[11px] font-medium transition-all shrink-0 active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+    <button
+      onClick={locked ? undefined : onClick}
+      disabled={locked}
+      className={`relative group flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold transition-all duration-300 shrink-0 overflow-hidden ${locked ? 'cursor-not-allowed opacity-60' : 'active:scale-95'} ${active
+        ? 'text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.05)]'
+        : 'text-white/50 border border-white/[0.04] hover:text-white/90 hover:border-white/10'
+        }`}
+    >
+      <div className={`absolute inset-0 transition-opacity duration-300 -z-10 ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)' }} />
+      <div className={`absolute inset-0 bg-black/40 backdrop-blur-md -z-20 transition-opacity duration-300 ${active ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`} />
+
+      <span className={`relative z-10 transition-colors duration-300 ${active ? 'text-white' : 'text-white/40 group-hover:text-white/80'}`}>
+        {icon}
+      </span>
+      <span className="relative z-10 tracking-wide drop-shadow-sm flex items-center gap-2">
+        {text}
+        {locked && (
+          <span className="px-1.5 py-[2px] rounded-md text-[7px] font-bold bg-white/10 border border-white/10 text-white/70 uppercase tracking-[0.1em]">
+            Coming Soon
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function QuickMissionButton({ icon, text, onClick, active }: { icon: React.ReactNode, text: string, onClick?: () => void, active?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-medium transition-all shrink-0 active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] ${active
+        ? 'bg-amber-500/20 border-amber-500/30 text-amber-100'
+        : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.12] hover:text-white text-white/60'
+        }`}
+    >
       {icon} {text}
     </button>
+  );
+}
+
+function UserTieIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="7" r="4" />
+      <path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2" />
+      <path d="M12 11l-1.5 3.5L12 21l1.5-6.5L12 11z" />
+    </svg>
   );
 }

@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { cn } from "../../lib/utils";
 import Link from "next/link";
 
-export default function ForgeXLogo({ className }: { className?: string }) {
+export default function ForgeXLogo({ className, collapsed = false }: { className?: string; collapsed?: boolean }) {
   const { scrollY } = useScroll();
 
   // Use exact width for "orge" (roughly 52px at 24px font size) to prevent layout jumping
@@ -108,23 +108,25 @@ export default function ForgeXLogo({ className }: { className?: string }) {
       </div>
 
       {/* Typography Wordmark */}
-      <div className="font-display-xl text-[24px] tracking-tight flex items-center relative z-10 pt-1 -ml-2">
-        <span className="text-white font-medium group-hover:text-gray-100 transition-colors flex items-center">
-          <motion.span
-            style={{ width: orgeWidth, opacity: orgeOpacity }}
-            className="inline-flex overflow-hidden whitespace-nowrap items-center"
+      {!collapsed && (
+        <div className="font-display-xl text-[24px] tracking-tight flex items-center relative z-10 pt-1 -ml-2">
+          <span className="text-white font-medium group-hover:text-gray-100 transition-colors flex items-center">
+            <motion.span
+              style={{ width: orgeWidth, opacity: orgeOpacity }}
+              className="inline-flex overflow-hidden whitespace-nowrap items-center"
+            >
+              orge
+            </motion.span>
+          </span>
+          <span
+            className="text-[#e2d5c5] font-semibold relative transition-all duration-500 group-hover:[text-shadow:0_0_20px_rgba(226,213,197,0.9),_0_0_10px_rgba(226,213,197,0.4)]"
           >
-            orge
-          </motion.span>
-        </span>
-        <span
-          className="text-[#e2d5c5] font-semibold relative transition-all duration-500 group-hover:[text-shadow:0_0_20px_rgba(226,213,197,0.9),_0_0_10px_rgba(226,213,197,0.4)]"
-        >
-          X
-          {/* Intense hover glow for X */}
-          <div className="absolute inset-0 bg-[#e2d5c5] blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-        </span>
-      </div>
+            X
+            {/* Intense hover glow for X */}
+            <div className="absolute inset-0 bg-[#e2d5c5] blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+          </span>
+        </div>
+      )}
     </Link>
   );
 }

@@ -27,7 +27,14 @@ export default function HeroVideoBackground() {
         playsInline
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover pointer-events-none mix-blend-screen opacity-70"
+        style={{
+          maskImage: "radial-gradient(ellipse at center, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 95%)",
+          WebkitMaskImage: "radial-gradient(ellipse at center, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 95%)",
+        }}
       />
+
+      {/* Top fade to blend into the fixed navigation bar and eliminate top edge cutoff */}
+      <div className="absolute inset-x-0 top-0 h-[250px] bg-gradient-to-b from-black via-black/80 to-transparent pointer-events-none" />
 
       {/* Massive seamless bottom fade to blend into the #000000 page background */}
       <div className="absolute inset-x-0 bottom-0 h-[400px] bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
