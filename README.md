@@ -19,6 +19,9 @@
 
 ---
 
+![Uploading image.png…]()
+
+
 ## 🌐 Live Demo
 
 > **Try it now:** [https://forge-x.netlify.app/](https://forge-x.netlify.app/)
@@ -65,9 +68,15 @@ Instead of asking "do you have the right keywords on your CV?", Forge X asks: **
 
 ---
 
+
+
 ## 🤖 The Five-Agent AI System
 
 The AI assistant uses a sequential, human-approved agent pipeline:
+
+
+<img width="1920" height="919" alt="image" src="https://github.com/user-attachments/assets/9394040d-9b09-4a6f-9127-c9de37b271c0" />
+
 
 ```
 1. Context Agent      → Gathers your profile, skills, projects, and preferences
@@ -82,6 +91,9 @@ The AI assistant uses a sequential, human-approved agent pipeline:
 All AI calls are routed through the FastAPI backend. The frontend never calls Gemini directly.
 
 ---
+
+<img width="1915" height="820" alt="image" src="https://github.com/user-attachments/assets/e399d9c8-33c9-4087-9fc7-7e136e607641" />
+
 
 ## 🏗️ Architecture Overview
 
@@ -172,36 +184,7 @@ cd jobseeker_frontend
 npm install
 ```
 
-### 3. Configure Environment Variables
 
-Copy the example file and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-Open `.env` and set each variable:
-
-```env
-# Firebase — from your Firebase project settings
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
-
-# Backend API URL
-NEXT_BACK_API_URL=http://localhost:8000
-
-# Cloudinary — for profile picture and media uploads
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-unsigned-upload-preset
-```
-
-> **Where to find these values:**
-> - **Firebase**: Go to [Firebase Console](https://console.firebase.google.com/) → Your Project → Project Settings → General → Your Apps.
-> - **Cloudinary**: Go to [Cloudinary Console](https://cloudinary.com/console) → Dashboard for cloud name; Settings → Upload for unsigned preset.
 
 ### 4. Set Up Firebase
 
