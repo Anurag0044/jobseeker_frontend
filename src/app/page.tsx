@@ -2,9 +2,8 @@ import React from "react";
 import Link from "next/link";
 import SmoothScroller from "../components/layout/SmoothScroller";
 import HeroSection from "../components/landing/HeroSection";
-import FeatureCards from "../components/landing/FeatureCards";
-import AgentShowcase from "../components/landing/AgentShowcase";
-import DemoWindow from "../components/landing/DemoWindow";
+import ScrollShowcase from "../components/landing/ScrollShowcase";
+import PremiumBentoGrid from "../components/landing/PremiumBentoGrid";
 import ForgeXLogo from "../components/ui/ForgeXLogo";
 
 import HoverNav from "../components/ui/HoverNav";
@@ -43,9 +42,8 @@ export default function LandingPage() {
 
         <main className="flex flex-col gap-xxl pb-xxl">
           <HeroSection />
-          <DemoWindow />
-          <FeatureCards />
-          <AgentShowcase />
+          <ScrollShowcase />
+          <PremiumBentoGrid />
         </main>
 
         {/* Footer */}
@@ -65,3 +63,4 @@ export default function LandingPage() {
     </SmoothScroller>
   );
 }
+

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
 import "./globals.css";
+import PremiumLoader from "../components/ui/PremiumLoader";
 
 const geist = Geist({
   variable: "--font-geist",
@@ -35,8 +36,11 @@ export default function RootLayout({
         className="min-h-full flex flex-col font-body-lg text-on-background bg-background bg-grid-pattern level-0"
         suppressHydrationWarning
       >
-        {children}
+        <PremiumLoader>
+          {children}
+        </PremiumLoader>
       </body>
     </html>
   );
 }
+
