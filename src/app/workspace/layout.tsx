@@ -477,7 +477,7 @@ function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const profileImage = displayProfile?.photoURL;
 
   return (
-    <header className="h-20 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-20 relative rounded-t-[24px]"
+    <header className="h-16 sm:h-20 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 sticky top-0 z-20 relative rounded-t-[24px]"
       style={{
         background: 'linear-gradient(180deg, rgba(5, 7, 15, 0.6) 0%, rgba(1, 2, 5, 0.3) 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
@@ -487,7 +487,7 @@ function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
       <button
         onClick={onMenuClick}
-        className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05] mr-2"
+        className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05] mr-1 sm:mr-2 shrink-0"
       >
         <Menu size={20} />
       </button>
@@ -495,57 +495,54 @@ function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="hidden md:block flex-1" />
 
       <div
-        className="w-full max-w-[200px] sm:max-w-[300px] lg:max-w-[400px] h-11 flex items-center px-4 transition-all group rounded-2xl mx-4"
+        className="flex-1 sm:flex-none w-full sm:w-auto sm:max-w-[280px] lg:max-w-[400px] h-9 sm:h-11 flex items-center px-3 sm:px-4 transition-all group rounded-2xl mx-1 sm:mx-4"
         style={{
           background: 'rgba(2, 6, 23, 0.4)',
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.02), 0 4px 15px rgba(0,0,0,0.2)',
         }}
       >
-        <Search size={18} className="mr-3 shrink-0 text-slate-400 group-active:scale-75 group-focus-within:rotate-12 transition-transform duration-300 group-focus-within:text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0)] group-focus-within:drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+        <Search size={16} className="mr-2 sm:mr-3 shrink-0 text-slate-400 group-active:scale-75 group-focus-within:rotate-12 transition-transform duration-300 group-focus-within:text-indigo-400" />
         <input
           type="text"
           placeholder="Search..."
-          className="bg-transparent border-none outline-none flex-1 w-full min-w-0 text-[14px] text-white placeholder-slate-500 font-medium"
+          className="bg-transparent border-none outline-none flex-1 w-full min-w-0 text-[13px] sm:text-[14px] text-white placeholder-slate-500 font-medium"
         />
       </div>
 
-      <div className="flex-1 flex items-center justify-end gap-3 lg:gap-6 relative z-10">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-1 sm:gap-3 lg:gap-6 relative z-10 shrink-0 ml-1 sm:ml-0">
+        <div className="hidden sm:flex items-center gap-2">
           <div className="relative group/theme">
-            <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05]">
-              <Sun size={20} />
+            <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all border border-transparent hover:border-white/[0.05]">
+              <Sun size={18} />
             </button>
             <div className="absolute top-12 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded bg-[#0A0A0A]/90 border border-white/10 text-white text-[10px] font-semibold tracking-wide whitespace-nowrap shadow-[0_4px_12px_rgba(0,0,0,0.5)] opacity-0 group-hover/theme:opacity-100 pointer-events-none transition-all duration-200 transform translate-y-1 group-hover/theme:translate-y-0 backdrop-blur-md z-30">
               Coming Soon
             </div>
           </div>
 
-          <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all relative border border-transparent hover:border-white/[0.05]">
-            <Bell size={20} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)] border border-[#0f172a]"></span>
+          <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all relative border border-transparent hover:border-white/[0.05]">
+            <Bell size={18} />
+            <span className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)] border border-[#0f172a]"></span>
           </button>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.05] relative group">
-            <MessageCircle size={20} />
-          </div>
         </div>
 
-        <div className="h-8 w-px bg-white/[0.08]"></div>
+        <div className="hidden sm:block h-8 w-px bg-white/[0.08]"></div>
 
-        <div className="flex items-center gap-3 cursor-pointer group p-1.5 pr-3 rounded-2xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.05] transition-all">
-          <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/[0.1] flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)]" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))' }}>
+        <div className="flex items-center gap-2 sm:gap-3 cursor-pointer group p-1 sm:p-1.5 sm:pr-3 rounded-2xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.05] transition-all">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border border-white/[0.1] flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] shrink-0" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))' }}>
             {profileImage ? (
               <img src={profileImage} alt={displayName} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[14px] font-bold text-indigo-300 drop-shadow-md">
+              <div className="w-full h-full flex items-center justify-center text-[13px] font-bold text-indigo-300 drop-shadow-md">
                 {firstLetter}
               </div>
             )}
           </div>
-          <span className="text-[14px] font-semibold text-slate-200 group-hover:text-white transition-colors">
+          <span className="hidden sm:block text-[13px] sm:text-[14px] font-semibold text-slate-200 group-hover:text-white transition-colors max-w-[100px] truncate">
             {displayName}
           </span>
-          <ChevronDown size={14} className="text-slate-500 ml-1 group-hover:text-slate-300 transition-colors" />
+          <ChevronDown size={14} className="hidden sm:block text-slate-500 ml-1 group-hover:text-slate-300 transition-colors" />
         </div>
       </div>
     </header>

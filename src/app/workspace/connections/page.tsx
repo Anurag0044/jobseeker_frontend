@@ -101,7 +101,7 @@ export default function ConnectionsPage() {
   ];
 
   return (
-    <div className="px-8 pb-16 pt-8 overflow-x-hidden h-full overflow-y-auto custom-scrollbar">
+    <div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 pt-4 sm:pt-8 overflow-x-hidden h-full overflow-y-auto custom-scrollbar">
       <motion.div
         variants={containerVariants}
         initial="hidden"

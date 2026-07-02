@@ -236,7 +236,12 @@ export default function AgentXPage() {
     scrollToBottom();
   }, [chatHistory]);
 
+  // Ref to ensure one-shot state transitions during streaming
+  const deployingAgentsClearedRef = useRef(false);
+
   const runMission = async (query: string, missionMode: "instant" | "expert" | "corporate" = "expert") => {
+    // Reset the one-shot guard for each new mission
+    deployingAgentsClearedRef.current = false;
     const lowerQuery = query.toLowerCase();
     const isGenerationRequest = lowerQuery.includes("generate") || lowerQuery.includes("create") || lowerQuery.includes("build") || lowerQuery.includes("make") || lowerQuery.includes("write");
     const isDocumentRequest = lowerQuery.includes("resume") || lowerQuery.includes("cv") || lowerQuery.includes("portfolio") || lowerQuery.includes("document");
@@ -426,7 +431,11 @@ export default function AgentXPage() {
                   completeStage("read_resume");
                 }
               } else if (data.type === "token") {
-                setIsDeployingAgents(false);
+                // Only clear the deploying state once, not on every single token
+                if (!deployingAgentsClearedRef.current) {
+                  deployingAgentsClearedRef.current = true;
+                  setIsDeployingAgents(false);
+                }
                 fullResponse += data.content;
                 setChatHistory(prev => {
                   const next = [...prev];
@@ -436,12 +445,14 @@ export default function AgentXPage() {
                   }
                   return next;
                 });
+                // Compute whether prepare_recs needs to be activated BEFORE calling setStages
+                // so we avoid calling setActiveStageIndex() inside a setStages updater (causes infinite loops)
                 setStages(prev => {
                   const next = [...prev];
                   const prepIdx = next.findIndex(s => s.id === "prepare_recs");
                   if (prepIdx !== -1 && next[prepIdx].status === "pending") {
                     const now = Date.now();
-                    // Complete all prior stages, build_context gets real total thinking time
+                    // Complete all prior stages; build_context gets real total thinking time
                     for (let i = 0; i < prepIdx; i++) {
                       if (next[i].status !== "completed") {
                         next[i] = {
@@ -454,9 +465,9 @@ export default function AgentXPage() {
                         };
                       }
                     }
-                    next[prepIdx].status = "active";
-                    next[prepIdx].startedAt = now;
-                    setActiveStageIndex(prepIdx);
+                    next[prepIdx] = { ...next[prepIdx], status: "active", startedAt: Date.now() };
+                    // Schedule activeStageIndex update outside this updater to avoid nested setState
+                    setTimeout(() => setActiveStageIndex(prepIdx), 0);
                   }
                   return next;
                 });
