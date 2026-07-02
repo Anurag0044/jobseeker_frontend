@@ -57,7 +57,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="px-4 sm:px-8 pb-8 pt-4 lg:pt-6 relative z-10 h-full flex flex-col">
+    <div className="px-3 sm:px-6 lg:px-8 pb-6 sm:pb-8 pt-3 sm:pt-4 lg:pt-6 relative z-10 h-full flex flex-col">
       <motion.div
         variants={containerVariants}
         initial="hidden"
